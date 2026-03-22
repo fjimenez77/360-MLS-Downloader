@@ -225,7 +225,7 @@ def download_tour(tour, output_dir, session=None, enhanced_only=False, originals
             if preview:
                 download_file(session, preview, room_dir / "preview.jpg")
 
-        # Enhanced / 8K panorama
+        # Enhanced / 8K panorama (optional — some may not be publicly accessible)
         if not originals_only and room.get("enhanced"):
             url = get_image_url(room["enhanced"])
             if url:
@@ -235,7 +235,9 @@ def download_tour(tour, output_dir, session=None, enhanced_only=False, originals
                     ext = "avif"
                 elif "png" in mime:
                     ext = "png"
-                download_file(session, url, room_dir / f"enhanced.{ext}")
+                if not download_file(session, url, room_dir / f"enhanced.{ext}", retries=1):
+                    # 8K may not be available for all panos — not an error
+                    pass
 
             # Enhanced preview
             enh_preview = get_enhanced_preview_url(room)
