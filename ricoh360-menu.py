@@ -518,9 +518,33 @@ def action_generate_viewer(state):
         if open_it.lower() == 'y':
             webbrowser.open(f"file://{output_path}")
             print(clr("  Opened in browser!", C.GREEN))
+        else:
+            _print_viewer_instructions(selected['path'])
 
     except Exception as e:
         print(clr(f"\n  Error generating viewer: {e}", C.RED))
+
+
+def _print_viewer_instructions(tour_path):
+    """Print instructions for launching the viewer manually."""
+    print()
+    print_divider()
+    print(f"  {clr('How to View the 360° Tour', C.BOLD)}")
+    print_divider()
+    print()
+    print(f"  {clr('Mac:', C.CYAN)}")
+    print(f"    Option 1: Double-click {clr('Open Tour Viewer.command', C.GREEN)} in the folder")
+    print(f"    Option 2: Run in Terminal:")
+    print(f"      {clr(f'cd \"{tour_path}\" && python3 -m http.server 8360', C.DIM)}")
+    print()
+    print(f"  {clr('Windows:', C.CYAN)}")
+    win_path = tour_path.replace('/', '\\\\')
+    print(f"    Option 1: Double-click {clr('Open Tour Viewer.bat', C.GREEN)} in the folder")
+    print(f"    Option 2: Run in CMD or PowerShell:")
+    print(f"      {clr(f'cd /d \"{win_path}\" && python -m http.server 8360', C.DIM)}")
+    print()
+    print(f"  Then open: {clr('http://localhost:8360/tour-viewer.html', C.BOLD)}")
+    print_divider()
 
 
 # ── Main Menu ───────────────────────────────────────────────────────────────

@@ -504,50 +504,99 @@ body {{
     user-select: all;
     word-break: break-all;
 }}
-#file-warning code:hover {{ background: #334155; }}
-#file-warning .hint {{ font-size: 13px; color: #64748b; margin-top: 4px; }}
-#file-warning .or-text {{ font-size: 14px; color: #64748b; margin: 24px 0 12px; }}
+#file-warning .hint {{ font-size: 12px; color: #64748b; margin-top: 4px; }}
+
+#file-warning .fw-logo {{
+    margin-bottom: 8px;
+}}
+
+#file-warning .fw-logo svg {{
+    width: 80px;
+    height: 80px;
+}}
+
+#file-warning .fw-app-name {{
+    font-size: 22px;
+    font-weight: 700;
+    color: #38bdf8;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+}}
+
+#file-warning .fw-tour-name {{
+    font-size: 16px;
+    color: #f1f5f9;
+    margin-bottom: 20px;
+}}
+
+#file-warning .fw-subtitle {{
+    font-size: 14px;
+    color: #94a3b8;
+    max-width: 560px;
+    margin-bottom: 8px;
+    line-height: 1.6;
+}}
+
+#file-warning .fw-divider {{
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, #38bdf8, #818cf8);
+    border-radius: 1px;
+    margin: 20px 0;
+}}
 
 #file-warning .platform-sections {{
     display: flex;
-    gap: 24px;
-    max-width: 700px;
+    gap: 20px;
+    max-width: 720px;
     width: 100%;
-    margin-top: 24px;
+    margin-top: 8px;
 }}
 
 #file-warning .platform-box {{
     flex: 1;
     background: #1e293b;
     border: 1px solid #334155;
-    border-radius: 10px;
-    padding: 20px;
+    border-radius: 12px;
+    padding: 24px;
     text-align: left;
+    transition: border-color 0.2s ease;
+}}
+
+#file-warning .platform-box:hover {{
+    border-color: #475569;
 }}
 
 #file-warning .platform-box h3 {{
-    font-size: 16px;
+    font-size: 17px;
     color: #f1f5f9;
-    margin-bottom: 14px;
+    margin-bottom: 18px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #334155;
 }}
 
 #file-warning .platform-box .platform-icon {{
-    font-size: 20px;
+    font-size: 22px;
 }}
 
 #file-warning .platform-box .method {{
-    margin-bottom: 14px;
+    margin-bottom: 16px;
+}}
+
+#file-warning .platform-box .method:last-child {{
+    margin-bottom: 0;
 }}
 
 #file-warning .platform-box .method-label {{
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     color: #64748b;
     margin-bottom: 6px;
+    font-weight: 600;
 }}
 
 #file-warning .platform-box .method-action {{
@@ -566,38 +615,93 @@ body {{
     border: 1px solid #334155;
     border-radius: 6px;
     padding: 10px 14px;
-    font-size: 13px;
+    font-size: 12px;
     color: #22d3ee;
-    margin: 6px 0 0 0;
+    margin: 8px 0 0 0;
     cursor: pointer;
     user-select: all;
     word-break: break-all;
+    transition: all 0.15s ease;
 }}
 
-#file-warning .platform-box code:hover {{ background: #334155; }}
+#file-warning .platform-box code:hover {{
+    background: #334155;
+    border-color: #38bdf8;
+}}
 
 #file-warning .url-note {{
-    font-size: 13px;
+    font-size: 14px;
     color: #94a3b8;
-    margin-top: 20px;
+    margin-top: 24px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 12px 24px;
 }}
 
 #file-warning .url-note strong {{
-    color: #f1f5f9;
+    color: #22d3ee;
+}}
+
+#file-warning .fw-footer {{
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid #1e293b;
+    text-align: center;
+}}
+
+#file-warning .fw-footer .fw-credit {{
+    font-size: 12px;
+    color: #475569;
+    margin-bottom: 6px;
+}}
+
+#file-warning .fw-footer a {{
+    color: #38bdf8;
+    text-decoration: none;
+    font-size: 12px;
+}}
+
+#file-warning .fw-footer a:hover {{
+    color: #22d3ee;
+    text-decoration: underline;
 }}
 
 @media (max-width: 700px) {{
     #file-warning .platform-sections {{
         flex-direction: column;
     }}
+    #file-warning {{ padding: 24px; }}
 }}
 </style>
 </head>
 <body>
 
 <div id="file-warning">
-    <h2>Local Server Required</h2>
-    <p>360° panoramas can't load directly from the file system due to browser security restrictions.<br>Use one of the options below to launch the viewer.</p>
+    <div class="fw-logo">
+        <svg viewBox="0 0 512 512" width="80" height="80">
+            <defs>
+                <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0f172a"/><stop offset="100%" style="stop-color:#1e293b"/></linearGradient>
+                <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#38bdf8"/><stop offset="100%" style="stop-color:#818cf8"/></linearGradient>
+                <linearGradient id="arrow" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#22d3ee"/><stop offset="100%" style="stop-color:#3b82f6"/></linearGradient>
+                <linearGradient id="house" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#f472b6"/><stop offset="100%" style="stop-color:#c084fc"/></linearGradient>
+            </defs>
+            <circle cx="256" cy="256" r="250" fill="url(#bg)" stroke="#334155" stroke-width="4"/>
+            <ellipse cx="256" cy="240" rx="155" ry="55" fill="none" stroke="url(#ring)" stroke-width="10" stroke-linecap="round" stroke-dasharray="320 60" opacity="0.9"/>
+            <ellipse cx="256" cy="240" rx="155" ry="55" fill="none" stroke="url(#ring)" stroke-width="7" stroke-linecap="round" stroke-dasharray="280 100" opacity="0.5" transform="rotate(60,256,240)"/>
+            <ellipse cx="256" cy="240" rx="155" ry="55" fill="none" stroke="url(#ring)" stroke-width="7" stroke-linecap="round" stroke-dasharray="250 130" opacity="0.35" transform="rotate(-60,256,240)"/>
+            <g transform="translate(256,225)"><polygon points="0,-52 -48,-10 48,-10" fill="url(#house)" opacity="0.95"/><rect x="-35" y="-10" width="70" height="50" rx="3" fill="url(#house)" opacity="0.85"/><rect x="-10" y="10" width="20" height="30" rx="2" fill="#0f172a" opacity="0.7"/><rect x="-30" y="0" width="14" height="12" rx="2" fill="#22d3ee" opacity="0.6"/><rect x="16" y="0" width="14" height="12" rx="2" fill="#22d3ee" opacity="0.6"/></g>
+            <g transform="translate(256,340)"><line x1="0" y1="-15" x2="0" y2="25" stroke="url(#arrow)" stroke-width="10" stroke-linecap="round"/><polyline points="-18,8 0,28 18,8" fill="none" stroke="url(#arrow)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><line x1="-28" y1="38" x2="28" y2="38" stroke="url(#arrow)" stroke-width="8" stroke-linecap="round"/></g>
+            <text x="256" y="440" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="bold" font-size="52" fill="#38bdf8" letter-spacing="4">360</text>
+        </svg>
+    </div>
+
+    <div class="fw-app-name">360 MLS Downloader</div>
+    <div class="fw-tour-name">{_escape_html(tour_name)}</div>
+
+    <p class="fw-subtitle">This 360° tour viewer needs a local web server to display panoramas.<br>Choose your platform below to get started.</p>
+
+    <div class="fw-divider"></div>
 
     <div class="platform-sections">
         <div class="platform-box">
@@ -634,6 +738,11 @@ body {{
     </div>
 
     <p class="url-note">Then open: <strong>http://localhost:8360/tour-viewer.html</strong></p>
+
+    <div class="fw-footer">
+        <div class="fw-credit">PRHack | CyberSpartan77</div>
+        <a href="https://github.com/fjimenez77/360-MLS-Downloader" target="_blank">github.com/fjimenez77/360-MLS-Downloader</a>
+    </div>
 </div>
 
 <div id="sidebar">
