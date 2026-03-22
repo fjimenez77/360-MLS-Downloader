@@ -505,30 +505,135 @@ body {{
     word-break: break-all;
 }}
 #file-warning code:hover {{ background: #334155; }}
-#file-warning .hint {{ font-size: 13px; color: #64748b; margin-top: 8px; }}
-#file-warning .or-text {{ font-size: 14px; color: #64748b; margin: 20px 0 8px; }}
-#file-warning .launcher-hint {{
+#file-warning .hint {{ font-size: 13px; color: #64748b; margin-top: 4px; }}
+#file-warning .or-text {{ font-size: 14px; color: #64748b; margin: 24px 0 12px; }}
+
+#file-warning .platform-sections {{
+    display: flex;
+    gap: 24px;
+    max-width: 700px;
+    width: 100%;
+    margin-top: 24px;
+}}
+
+#file-warning .platform-box {{
+    flex: 1;
     background: #1e293b;
     border: 1px solid #334155;
-    border-radius: 8px;
-    padding: 16px 24px;
-    max-width: 520px;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: left;
 }}
-#file-warning .launcher-hint p {{ color: #e2e8f0; font-size: 14px; }}
+
+#file-warning .platform-box h3 {{
+    font-size: 16px;
+    color: #f1f5f9;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}}
+
+#file-warning .platform-box .platform-icon {{
+    font-size: 20px;
+}}
+
+#file-warning .platform-box .method {{
+    margin-bottom: 14px;
+}}
+
+#file-warning .platform-box .method-label {{
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    margin-bottom: 6px;
+}}
+
+#file-warning .platform-box .method-action {{
+    font-size: 14px;
+    color: #e2e8f0;
+    line-height: 1.5;
+}}
+
+#file-warning .platform-box .method-action strong {{
+    color: #22d3ee;
+}}
+
+#file-warning .platform-box code {{
+    display: block;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #22d3ee;
+    margin: 6px 0 0 0;
+    cursor: pointer;
+    user-select: all;
+    word-break: break-all;
+}}
+
+#file-warning .platform-box code:hover {{ background: #334155; }}
+
+#file-warning .url-note {{
+    font-size: 13px;
+    color: #94a3b8;
+    margin-top: 20px;
+}}
+
+#file-warning .url-note strong {{
+    color: #f1f5f9;
+}}
+
+@media (max-width: 700px) {{
+    #file-warning .platform-sections {{
+        flex-direction: column;
+    }}
+}}
 </style>
 </head>
 <body>
 
 <div id="file-warning">
     <h2>Local Server Required</h2>
-    <p>360° panoramas can't load directly from the file system due to browser security restrictions. Start a local server with this command:</p>
-    <code id="server-cmd" onclick="navigator.clipboard.writeText(this.textContent).then(function(){{document.getElementById('copy-msg').textContent='Copied!'}})">python3 -m http.server 8360</code>
-    <p class="hint" id="copy-msg">Click to copy — then paste in Terminal</p>
-    <p>Then open: <strong>http://localhost:8360/tour-viewer.html</strong></p>
-    <div class="or-text">— or —</div>
-    <div class="launcher-hint">
-        <p>Double-click <strong>"Open Tour Viewer.command"</strong> (Mac) or <strong>"Open Tour Viewer.bat"</strong> (Windows) in this folder — it does everything automatically.</p>
+    <p>360° panoramas can't load directly from the file system due to browser security restrictions.<br>Use one of the options below to launch the viewer.</p>
+
+    <div class="platform-sections">
+        <div class="platform-box">
+            <h3><span class="platform-icon">&#63743;</span> Mac</h3>
+
+            <div class="method">
+                <div class="method-label">Option 1 — One Click</div>
+                <div class="method-action">Double-click <strong>"Open Tour Viewer.command"</strong> in this folder</div>
+            </div>
+
+            <div class="method">
+                <div class="method-label">Option 2 — Terminal</div>
+                <div class="method-action">Copy and paste into Terminal:</div>
+                <code id="mac-cmd" onclick="navigator.clipboard.writeText(this.textContent).then(function(){{document.getElementById('mac-copy').textContent='Copied!'}})">python3 -m http.server 8360</code>
+                <p class="hint" id="mac-copy">Click to copy</p>
+            </div>
+        </div>
+
+        <div class="platform-box">
+            <h3><span class="platform-icon">&#8862;</span> Windows</h3>
+
+            <div class="method">
+                <div class="method-label">Option 1 — One Click</div>
+                <div class="method-action">Double-click <strong>"Open Tour Viewer.bat"</strong> in this folder</div>
+            </div>
+
+            <div class="method">
+                <div class="method-label">Option 2 — Command Prompt</div>
+                <div class="method-action">Copy and paste into CMD or PowerShell:</div>
+                <code id="win-cmd" onclick="navigator.clipboard.writeText(this.textContent).then(function(){{document.getElementById('win-copy').textContent='Copied!'}})">python -m http.server 8360</code>
+                <p class="hint" id="win-copy">Click to copy</p>
+            </div>
+        </div>
     </div>
+
+    <p class="url-note">Then open: <strong>http://localhost:8360/tour-viewer.html</strong></p>
 </div>
 
 <div id="sidebar">
@@ -559,11 +664,16 @@ body {{
 // Detect file:// protocol and show warning
 if (window.location.protocol === 'file:') {{
     document.getElementById('file-warning').classList.add('show');
-    // Set the command with the correct directory
+    // Set the commands with the correct directory
     var path = decodeURIComponent(window.location.pathname);
     var dir = path.substring(0, path.lastIndexOf('/'));
-    document.getElementById('server-cmd').textContent =
+    document.getElementById('mac-cmd').textContent =
         'cd "' + dir + '" && python3 -m http.server 8360';
+    // Windows path conversion (swap / to \, remove leading /)
+    var winDir = dir.replace(/\\//g, '\\\\');
+    if (winDir.startsWith('\\\\')) winDir = winDir.substring(1);
+    document.getElementById('win-cmd').textContent =
+        'cd /d "' + winDir + '" && python -m http.server 8360';
 }}
 </script>
 <script>
