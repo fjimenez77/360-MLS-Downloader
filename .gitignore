@@ -1,0 +1,23 @@
+# Downloads
+ricoh360-*/
+*.jpg
+*.jpeg
+*.png
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
