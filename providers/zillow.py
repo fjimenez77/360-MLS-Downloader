@@ -244,6 +244,122 @@ def _extract_page_data(html):
     if mls_match:
         data["mls_id"] = mls_match.group(1)
 
+    # ── Extended Property Facts ──────────────────────────────────────
+
+    # Array-valued facts
+    array_facts = {
+        "heating": "heating",
+        "cooling": "cooling",
+        "appliances": "appliances",
+        "flooring": "flooring",
+        "constructionMaterials": "construction_materials",
+        "fireplaceFeatures": "fireplace_features",
+        "poolFeatures": "pool_features",
+        "parkingFeatures": "parking_features",
+        "laundryFeatures": "laundry_features",
+        "windowFeatures": "window_features",
+        "patioAndPorchFeatures": "patio_features",
+        "exteriorFeatures": "exterior_features",
+        "securityFeatures": "security_features",
+        "communityFeatures": "community_features",
+        "lotFeatures": "lot_features",
+        "waterSource": "water_source",
+        "sewer": "sewer",
+        "electric": "electric",
+    }
+    for json_key, data_key in array_facts.items():
+        m = re.search(rf'"{json_key}"\s*:\s*(\[[^\]]*\])', h)
+        if m:
+            try:
+                val = json.loads(m.group(1))
+                if val and val != ["None"]:
+                    data[data_key] = val
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    # Scalar facts
+    scalar_facts = {
+        "fireplaces": ("fireplaces", int),
+        "stories": ("stories", int),
+        "roofType": ("roof_type", str),
+        "propertyCondition": ("property_condition", str),
+        "builderName": ("builder_name", str),
+        "parcelNumber": ("parcel_number", str),
+        "propertySubType": ("property_subtype", str),
+        "garageSpaces": ("garage_spaces", int),
+        "totalParkingSpaces": ("total_parking", int),
+        "lotSizeDimensions": ("lot_dimensions", str),
+    }
+    for json_key, (data_key, conv) in scalar_facts.items():
+        m = re.search(rf'"{json_key}"\s*:\s*"?([^,"\]]+)"?', h)
+        if m:
+            val = m.group(1).strip()
+            if val and val != "null":
+                try:
+                    data[data_key] = conv(val)
+                except (ValueError, TypeError):
+                    data[data_key] = val
+
+    # Rooms with dimensions
+    rooms_data = []
+    # Extract from rendered HTML spans (more reliable)
+    room_sections = re.findall(
+        r'(?:Bedroom|Bathroom|Kitchen|Living|Dining|Office|Family|Primary|Laundry|Garage|Game|Utility|Bonus)'
+        r'[^<]*?(?:Area|Dimensions|Features)[^<]*',
+        h, re.IGNORECASE
+    )
+
+    # Try the JSON rooms array
+    rooms_match = re.search(r'"rooms"\s*:\s*\[((?:\{[^}]*\},?\s*)*)\]', h)
+    if rooms_match:
+        try:
+            rooms_json = json.loads("[" + rooms_match.group(1) + "]")
+            for rm in rooms_json:
+                room_type = rm.get("roomType", "")
+                room_area = rm.get("roomArea", "")
+                room_dims = rm.get("roomDimensions", "")
+                room_features = rm.get("features", "")
+                room_level = rm.get("level", "")
+                if room_type:
+                    rooms_data.append({
+                        "type": room_type,
+                        "area": room_area,
+                        "dimensions": room_dims,
+                        "features": room_features,
+                        "level": room_level,
+                    })
+        except (json.JSONDecodeError, TypeError):
+            pass
+    if rooms_data:
+        data["rooms_detail"] = rooms_data
+
+    # HOA
+    hoa_match = re.search(r'"associationFee"\s*:\s*"?(\d+)"?', h)
+    if hoa_match:
+        data["hoa_fee"] = int(hoa_match.group(1))
+    hoa_freq = re.search(r'"associationFeeFrequency"\s*:\s*"([^"]+)"', h)
+    if hoa_freq:
+        data["hoa_frequency"] = hoa_freq.group(1)
+    hoa_name = re.search(r'"associationName"\s*:\s*"([^"]+)"', h)
+    if hoa_name and hoa_name.group(1) != "null":
+        data["hoa_name"] = hoa_name.group(1)
+
+    # Listing agent
+    agent_match = re.search(r'"attributionInfo"\s*:\s*\{[^}]*"agentName"\s*:\s*"([^"]+)"', h)
+    if agent_match:
+        data["agent_name"] = agent_match.group(1)
+    broker_match = re.search(r'"brokerName"\s*:\s*"([^"]+)"', h)
+    if broker_match:
+        data["broker_name"] = broker_match.group(1)
+    agent_phone = re.search(r'"agentPhoneNumber"\s*:\s*"([^"]+)"', h)
+    if agent_phone:
+        data["agent_phone"] = agent_phone.group(1)
+
+    # Subdivision
+    subdiv_match = re.search(r'"subdivisionName"\s*:\s*"([^"]+)"', h)
+    if subdiv_match:
+        data["subdivision"] = subdiv_match.group(1)
+
     # Photos — use normalized HTML for URL extraction
     photo_urls = []
     photo_pattern = re.findall(r'"url"\s*:\s*"(https://photos\.zillowstatic\.com/[^"]+)"', h)
@@ -297,18 +413,70 @@ def _get_listing_details(page_data):
             return "N/A"
         return f"{s:,} sq ft"
 
-    return {
+    def fmt_list(lst):
+        if not lst:
+            return None
+        return ", ".join(str(x) for x in lst)
+
+    details = {
         "price": fmt_price(page_data.get("price")),
         "status": page_data.get("status", "N/A"),
         "bedrooms": str(page_data.get("bedrooms", "N/A")),
         "bathrooms": str(page_data.get("bathrooms", "N/A")),
         "sqft": fmt_sqft(page_data.get("sqft")),
         "lot_size": fmt_sqft(page_data.get("lot_size")),
+        "lot_dimensions": page_data.get("lot_dimensions", ""),
+        "lot_features": fmt_list(page_data.get("lot_features")),
         "year_built": str(page_data.get("year_built", "N/A")),
         "home_type": page_data.get("home_type", "N/A"),
+        "property_subtype": page_data.get("property_subtype", ""),
+        "property_condition": page_data.get("property_condition", ""),
+        "stories": page_data.get("stories", ""),
         "mls_id": page_data.get("mls_id", "N/A"),
+        "parcel_number": page_data.get("parcel_number", ""),
         "description": page_data.get("description", "No description available."),
+        # Interior
+        "heating": fmt_list(page_data.get("heating")),
+        "cooling": fmt_list(page_data.get("cooling")),
+        "appliances": fmt_list(page_data.get("appliances")),
+        "flooring": fmt_list(page_data.get("flooring")),
+        "laundry": fmt_list(page_data.get("laundry_features")),
+        "windows": fmt_list(page_data.get("window_features")),
+        "fireplaces": page_data.get("fireplaces", ""),
+        "fireplace_features": fmt_list(page_data.get("fireplace_features")),
+        # Exterior
+        "construction_materials": fmt_list(page_data.get("construction_materials")),
+        "roof": page_data.get("roof_type", ""),
+        "parking": fmt_list(page_data.get("parking_features")),
+        "total_parking": page_data.get("total_parking", ""),
+        "garage_spaces": page_data.get("garage_spaces", ""),
+        "patio": fmt_list(page_data.get("patio_features")),
+        "exterior": fmt_list(page_data.get("exterior_features")),
+        "pool": fmt_list(page_data.get("pool_features")),
+        "fencing": fmt_list(page_data.get("fencing")),
+        # Construction
+        "builder": page_data.get("builder_name", ""),
+        # Utilities
+        "electric": fmt_list(page_data.get("electric")),
+        "water": fmt_list(page_data.get("water_source")),
+        "sewer": fmt_list(page_data.get("sewer")),
+        # Community
+        "security": fmt_list(page_data.get("security_features")),
+        "community": fmt_list(page_data.get("community_features")),
+        "subdivision": page_data.get("subdivision", ""),
+        # HOA
+        "hoa_fee": page_data.get("hoa_fee", ""),
+        "hoa_frequency": page_data.get("hoa_frequency", ""),
+        "hoa_name": page_data.get("hoa_name", ""),
+        # Agent
+        "agent_name": page_data.get("agent_name", ""),
+        "agent_phone": page_data.get("agent_phone", ""),
+        "broker_name": page_data.get("broker_name", ""),
+        # Rooms detail
+        "rooms_detail": page_data.get("rooms_detail", []),
     }
+
+    return details
 
 
 def _get_listing_photos(page_data):
