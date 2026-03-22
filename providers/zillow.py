@@ -285,13 +285,16 @@ def _extract_page_data(html):
         "propertyCondition": ("property_condition", str),
         "builderName": ("builder_name", str),
         "parcelNumber": ("parcel_number", str),
-        "propertySubType": ("property_subtype", str),
+        "propertySubType": ("property_subtype", str),  # Note: may be array — handled below
         "garageSpaces": ("garage_spaces", int),
         "totalParkingSpaces": ("total_parking", int),
         "lotSizeDimensions": ("lot_dimensions", str),
     }
     for json_key, (data_key, conv) in scalar_facts.items():
-        m = re.search(rf'"{json_key}"\s*:\s*"?([^,"\]]+)"?', h)
+        m = re.search(rf'"{json_key}"\s*:\s*"([^"]+)"', h)
+        if not m:
+            # Try unquoted numeric value
+            m = re.search(rf'"{json_key}"\s*:\s*(\d+)', h)
         if m:
             val = m.group(1).strip()
             if val and val != "null":
@@ -554,22 +557,32 @@ def _fetch_page_interactive(url):
 
                 content = page.content()
 
-                # Check if we got past bot protection
+                # Check if we got past bot protection AND the full page rendered
                 # Zillow escapes quotes in embedded JSON, so check both formats
                 norm = content.replace('\\"', '"')
-                if "vrModelGuid" in norm or "streetAddress" in norm or 'zillow_fb:beds' in content:
+                # Wait for resoFacts (detailed property data) OR vrModelGuid (3D tour)
+                has_facts = "resoFacts" in norm or "flooring" in norm or "heating" in norm
+                has_basic = "streetAddress" in norm or 'zillow_fb:beds' in content
+                if has_facts:
                     print("  Page loaded successfully!")
                     html = content
+                    break
+                elif has_basic and elapsed >= 12:
+                    # Got basic data but no detailed facts after 12s — accept it
+                    # Give one more wait for JS to finish rendering facts
+                    page.wait_for_timeout(5000)
+                    html = page.content()
+                    print("  Page loaded (basic data captured).")
                     break
 
                 if elapsed % 15 == 0 and elapsed > 0:
                     print(f"  Waiting for page to load... ({elapsed}s)")
 
             if not html:
-                # One final check
+                # One final check — grab whatever we have
                 html = page.content()
                 norm = html.replace('\\"', '"')
-                if "vrModelGuid" not in norm and "streetAddress" not in norm and "zillow_fb:beds" not in html:
+                if "streetAddress" not in norm and "zillow_fb:beds" not in html and "zpid" not in norm:
                     raise ValueError(
                         "Timed out waiting for Zillow page to load.\n"
                         "Make sure you solve any CAPTCHA that appears in the browser."
