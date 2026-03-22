@@ -1,6 +1,10 @@
-# 360 MLS Downloader
+<p align="center">
+  <img src="logo.svg" alt="360 MLS Downloader" width="200">
+</p>
 
-Download 360-degree panoramic images from Ricoh360 MLS virtual home tours. Supports both an interactive menu-driven interface and a scriptable CLI for automation.
+<h1 align="center">360 MLS Downloader</h1>
+
+<p align="center">Download 360-degree panoramic images from Ricoh360 MLS virtual home tours.<br>Supports both an interactive menu-driven interface and a scriptable CLI for automation.</p>
 
 Built by **PRHack | CyberSpartan77** ([@fjimenez77](https://github.com/fjimenez77))
 

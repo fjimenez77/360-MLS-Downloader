@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="200" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#38bdf8"/>
+      <stop offset="100%" style="stop-color:#818cf8"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#22d3ee"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="house" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f472b6"/>
+      <stop offset="100%" style="stop-color:#c084fc"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="250" fill="url(#bg)" stroke="#334155" stroke-width="4"/>
+
+  <!-- 360 ring / orbit ellipse -->
+  <ellipse cx="256" cy="240" rx="155" ry="55" fill="none" stroke="url(#ring)" stroke-width="10" stroke-linecap="round" stroke-dasharray="320 60" opacity="0.9"/>
+
+  <!-- Second orbit ring rotated -->
+  <ellipse cx="256" cy="240" rx="155" ry="55" fill="none" stroke="url(#ring)" stroke-width="7" stroke-linecap="round" stroke-dasharray="280 100" opacity="0.5" transform="rotate(60, 256, 240)"/>
+
+  <!-- Third orbit ring -->
+  <ellipse cx="256" cy="240" rx="155" ry="55" fill="none" stroke="url(#ring)" stroke-width="7" stroke-linecap="round" stroke-dasharray="250 130" opacity="0.35" transform="rotate(-60, 256, 240)"/>
+
+  <!-- House icon in center -->
+  <g transform="translate(256, 225)">
+    <!-- Roof -->
+    <polygon points="0,-52 -48,-10 48,-10" fill="url(#house)" opacity="0.95"/>
+    <!-- Body -->
+    <rect x="-35" y="-10" width="70" height="50" rx="3" fill="url(#house)" opacity="0.85"/>
+    <!-- Door -->
+    <rect x="-10" y="10" width="20" height="30" rx="2" fill="#0f172a" opacity="0.7"/>
+    <!-- Window left -->
+    <rect x="-30" y="0" width="14" height="12" rx="2" fill="#22d3ee" opacity="0.6"/>
+    <!-- Window right -->
+    <rect x="16" y="0" width="14" height="12" rx="2" fill="#22d3ee" opacity="0.6"/>
+  </g>
+
+  <!-- Download arrow below -->
+  <g transform="translate(256, 340)">
+    <line x1="0" y1="-15" x2="0" y2="25" stroke="url(#arrow)" stroke-width="10" stroke-linecap="round"/>
+    <polyline points="-18,8 0,28 18,8" fill="none" stroke="url(#arrow)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Base line -->
+    <line x1="-28" y1="38" x2="28" y2="38" stroke="url(#arrow)" stroke-width="8" stroke-linecap="round"/>
+  </g>
+
+  <!-- "360" text -->
+  <text x="256" y="440" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="52" fill="#38bdf8" letter-spacing="4">360</text>
+
+</svg>
