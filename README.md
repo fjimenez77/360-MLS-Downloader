@@ -268,6 +268,12 @@ API reverse-engineering powered by [AuthScope](https://github.com/fjimenez77/Aut
 
 ---
 
+## Contributing
+
+Want to help improve this tool? Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to fork, branch, and submit a pull request.
+
+---
+
 ## Disclaimer
 
 This tool is intended for downloading your own property tour images or tours you have permission to use. Respect photographers' copyright and licensing agreements. The images may be owned by the photographer or real estate agency — verify your usage rights before republishing.
