@@ -173,7 +173,8 @@ def action_set_url(state):
         return
 
     dir_name = sanitize_filename(state.tour['name']) or state.tour_id
-    state.output_dir = os.path.join(".", f"ricoh360-{dir_name}")
+    downloads = os.path.join(Path.home(), "Downloads")
+    state.output_dir = os.path.join(downloads, f"ricoh360-{dir_name}")
 
     print()
     print(clr("  Tour loaded successfully!", C.GREEN))
@@ -234,10 +235,11 @@ def action_download_menu(state):
 
     choice = menu_choice([
         ("1", f"Download ALL images ({total} original + {enhanced_count} enhanced)"),
-        ("2", f"Download enhanced only ({enhanced_count} rooms)"),
-        ("3", f"Download originals only ({total} rooms)"),
-        ("4", "Download specific rooms (pick which ones)"),
-        ("5", "Download metadata JSON only (no images)"),
+        ("2", f"Download ALL images + JSON metadata ({total} original + {enhanced_count} enhanced + JSON)"),
+        ("3", f"Download enhanced only ({enhanced_count} rooms)"),
+        ("4", f"Download originals only ({total} rooms)"),
+        ("5", "Download specific rooms (pick which ones)"),
+        ("6", "Download metadata JSON only (no images)"),
         ("b", "Back to main menu"),
     ], title="Download Options")
 
@@ -252,12 +254,15 @@ def action_download_menu(state):
     if choice == '1':
         _run_download(state, enhanced_only=False, originals_only=False)
     elif choice == '2':
-        _run_download(state, enhanced_only=True, originals_only=False)
+        _save_json_only(state)
+        _run_download(state, enhanced_only=False, originals_only=False)
     elif choice == '3':
-        _run_download(state, enhanced_only=False, originals_only=True)
+        _run_download(state, enhanced_only=True, originals_only=False)
     elif choice == '4':
-        action_download_selective(state)
+        _run_download(state, enhanced_only=False, originals_only=True)
     elif choice == '5':
+        action_download_selective(state)
+    elif choice == '6':
         _save_json_only(state)
 
 
@@ -525,7 +530,8 @@ def main():
             state.raw_data = fetch_tour_data(state.session, state.build_id, state.tour_id)
             state.tour = parse_tour(state.raw_data)
             dir_name = sanitize_filename(state.tour['name']) or state.tour_id
-            state.output_dir = os.path.join(".", f"ricoh360-{dir_name}")
+            downloads = os.path.join(Path.home(), "Downloads")
+            state.output_dir = os.path.join(downloads, f"ricoh360-{dir_name}")
             print(clr("  Tour loaded!", C.GREEN))
         except Exception as e:
             print(clr(f"  Failed to load: {e}", C.RED))

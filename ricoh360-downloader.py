@@ -97,7 +97,8 @@ Examples:
         output_dir = args.output
     else:
         dir_name = sanitize_filename(tour['name']) or tour_id
-        output_dir = os.path.join(".", f"ricoh360-{dir_name}")
+        downloads = os.path.join(Path.home(), "Downloads")
+        output_dir = os.path.join(downloads, f"ricoh360-{dir_name}")
 
     if args.json_only:
         output = Path(output_dir)
