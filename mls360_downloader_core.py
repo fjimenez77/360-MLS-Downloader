@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Ricoh360 MLS Tour Downloader
+360 MLS Tour Downloader
 =============================
-Downloads all 360° panoramic images from any Ricoh360 MLS tour URL.
+Downloads all 360° panoramic images from any MLS tour MLS tour URL.
 
 Usage:
-    python ricoh360-downloader.py <tour_url> [--output <dir>] [--enhanced-only] [--originals-only]
+    python mls360-downloader.py <tour_url> [--output <dir>] [--enhanced-only] [--originals-only]
 
 Examples:
-    python ricoh360-downloader.py https://mls.ricoh360.com/f948586f-1c5c-48dc-81fd-6ef9a09a12c0/c84e8d06-2b82-46a0-991a-8814573e048b
-    python ricoh360-downloader.py https://mls.ricoh360.com/f948586f-1c5c-48dc-81fd-6ef9a09a12c0 --output ~/Desktop/my-tour
-    python ricoh360-downloader.py f948586f-1c5c-48dc-81fd-6ef9a09a12c0 --enhanced-only
+    python mls360-downloader.py https://mls.mls360.com/f948586f-1c5c-48dc-81fd-6ef9a09a12c0/c84e8d06-2b82-46a0-991a-8814573e048b
+    python mls360-downloader.py https://mls.mls360.com/f948586f-1c5c-48dc-81fd-6ef9a09a12c0 --output ~/Desktop/my-tour
+    python mls360-downloader.py f948586f-1c5c-48dc-81fd-6ef9a09a12c0 --enhanced-only
 """
 
 __version__ = "1.0.0"
@@ -54,7 +54,7 @@ def extract_tour_id(url_or_id):
 
 def get_build_id(session):
     """Get the Next.js build ID from the main page."""
-    resp = session.get("https://mls.ricoh360.com/")
+    resp = session.get("https://mls.mls360.com/")
     resp.raise_for_status()
 
     match = re.search(r'"buildId"\s*:\s*"([^"]+)"', resp.text)
@@ -71,7 +71,7 @@ def get_build_id(session):
 
 def fetch_tour_data(session, build_id, tour_id):
     """Fetch the full tour JSON from Next.js data endpoint."""
-    url = f"https://mls.ricoh360.com/_next/data/{build_id}/{tour_id}.json"
+    url = f"https://mls.mls360.com/_next/data/{build_id}/{tour_id}.json"
     params = {"tourId": tour_id}
 
     resp = session.get(url, params=params)
@@ -302,7 +302,7 @@ between rooms.
 To view these images as an interactive 360° tour on
 your computer:
 
-  1. Use the menu app: python3 ricoh360-menu.py
+  1. Use the menu app: python3 mls360-menu.py
      Select option 7: "Build 360° HTML viewer"
 
   2. Or double-click "Open Tour Viewer.command" (Mac)
@@ -402,17 +402,17 @@ def download_tour(tour, output_dir, enhanced_only=False, originals_only=False):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Download Ricoh360 MLS virtual tours — all 360° panoramic images.",
+        description="Download MLS virtual tours — all 360° panoramic images.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s https://mls.ricoh360.com/TOUR-ID/ROOM-ID
-  %(prog)s https://mls.ricoh360.com/TOUR-ID --output ~/tours/my-house
+  %(prog)s https://mls.mls360.com/TOUR-ID/ROOM-ID
+  %(prog)s https://mls.mls360.com/TOUR-ID --output ~/tours/my-house
   %(prog)s TOUR-UUID --enhanced-only
   %(prog)s TOUR-URL --originals-only
         """,
     )
-    parser.add_argument("url", help="Ricoh360 tour URL or tour UUID")
+    parser.add_argument("url", help="MLS tour URL or tour UUID")
     parser.add_argument("--output", "-o", help="Output directory (default: ./<tour-name>)")
     parser.add_argument("--enhanced-only", action="store_true", help="Only download enhanced images")
     parser.add_argument("--originals-only", action="store_true", help="Only download original images")
@@ -424,7 +424,7 @@ Examples:
         print("Error: --enhanced-only and --originals-only are mutually exclusive.")
         sys.exit(1)
 
-    print("Ricoh360 Tour Downloader")
+    print("MLS tour Tour Downloader")
     print("=" * 50)
 
     session = requests.Session()
@@ -461,7 +461,7 @@ Examples:
     else:
         dir_name = sanitize_filename(tour['name']) or tour_id
         downloads = os.path.join(Path.home(), "Downloads")
-        output_dir = os.path.join(downloads, f"ricoh360-{dir_name}")
+        output_dir = os.path.join(downloads, f"mls360-{dir_name}")
 
     if args.json_only:
         output = Path(output_dir)

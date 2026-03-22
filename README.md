@@ -4,7 +4,7 @@
 
 <h1 align="center">360 MLS Downloader</h1>
 
-<p align="center">Download 360-degree panoramic images from Ricoh360 MLS virtual home tours.<br>Supports both an interactive menu-driven interface and a scriptable CLI for automation.</p>
+<p align="center">Download 360-degree panoramic images from MLS virtual home tours.<br>Supports both an interactive menu-driven interface and a scriptable CLI for automation.</p>
 
 <p align="center"><strong>v1.0.0</strong></p>
 
@@ -14,7 +14,7 @@ Built by **PRHack | CyberSpartan77** ([@fjimenez77](https://github.com/fjimenez7
 
 ## Features
 
-- Download all 360 equirectangular panoramas from any Ricoh360 MLS tour
+- Download all 360 equirectangular panoramas from any MLS virtual tour
 - Interactive menu mode with tour analysis, room selection, and size estimation
 - CLI mode with flags for scripting and automation
 - Downloads both original and AI-enhanced versions
@@ -45,12 +45,12 @@ pip install requests
 ### Interactive Menu
 
 ```bash
-python3 ricoh360-menu.py
+python3 mls360-menu.py
 ```
 
 This launches a full interactive menu where you can:
 
-1. Paste any Ricoh360 tour URL
+1. Paste any MLS tour URL
 2. View tour details (address, photographer, room count)
 3. Browse all rooms with enhancement status
 4. Choose what to download
@@ -61,29 +61,29 @@ This launches a full interactive menu where you can:
 You can also pre-load a tour URL:
 
 ```bash
-python3 ricoh360-menu.py "https://mls.ricoh360.com/YOUR-TOUR-ID/ROOM-ID"
+python3 mls360-menu.py "https://mls.ricoh360.com/YOUR-TOUR-ID/ROOM-ID"
 ```
 
 ### CLI Mode (Advanced)
 
 ```bash
 # Download everything from a tour
-python3 ricoh360-downloader.py "https://mls.ricoh360.com/TOUR-ID/ROOM-ID"
+python3 mls360-downloader.py "https://mls.ricoh360.com/TOUR-ID/ROOM-ID"
 
 # Just the tour UUID works too
-python3 ricoh360-downloader.py f948586f-1c5c-48dc-81fd-6ef9a09a12c0
+python3 mls360-downloader.py f948586f-1c5c-48dc-81fd-6ef9a09a12c0
 
 # Custom output directory
-python3 ricoh360-downloader.py TOUR-URL --output ~/Desktop/my-listing
+python3 mls360-downloader.py TOUR-URL --output ~/Desktop/my-listing
 
 # Only AI-enhanced images
-python3 ricoh360-downloader.py TOUR-URL --enhanced-only
+python3 mls360-downloader.py TOUR-URL --enhanced-only
 
 # Only originals (skip enhanced)
-python3 ricoh360-downloader.py TOUR-URL --originals-only
+python3 mls360-downloader.py TOUR-URL --originals-only
 
 # Just grab metadata JSON, no images
-python3 ricoh360-downloader.py TOUR-URL --json-only
+python3 mls360-downloader.py TOUR-URL --json-only
 ```
 
 ---
@@ -92,31 +92,31 @@ python3 ricoh360-downloader.py TOUR-URL --json-only
 
 ### Step 1: Get the Tour URL
 
-Open any Ricoh360 MLS virtual tour in your browser. The URL looks like:
+Open any MLS virtual tour in your browser. The URL looks like:
 
 ```
 https://mls.ricoh360.com/f948586f-1c5c-48dc-81fd-6ef9a09a12c0/c84e8d06-2b82-46a0-991a-8814573e048b
 ```
 
-The first UUID is the **tour ID**, the second is the current **room ID**. You only need the tour ID — the tool extracts it automatically from any Ricoh360 URL.
+The first UUID is the **tour ID**, the second is the current **room ID**. You only need the tour ID — the tool extracts it automatically from the URL.
 
 ### Step 2: Run the Downloader
 
 **Option A — Interactive Menu:**
 
 ```bash
-python3 ricoh360-menu.py
+python3 mls360-menu.py
 ```
 
 Then select option `1` and paste the URL. The tool will:
-- Fetch the tour data from Ricoh360's API
+- Fetch the tour data from the platform's API
 - Show you tour details, room list, and enhancement status
 - Let you choose what to download
 
 **Option B — CLI:**
 
 ```bash
-python3 ricoh360-downloader.py "https://mls.ricoh360.com/TOUR-ID"
+python3 mls360-downloader.py "https://mls.ricoh360.com/TOUR-ID"
 ```
 
 ### Step 3: Use Your Images
@@ -124,7 +124,7 @@ python3 ricoh360-downloader.py "https://mls.ricoh360.com/TOUR-ID"
 Downloaded files are organized like this:
 
 ```
-~/Downloads/ricoh360-Tour-Name/
+~/Downloads/mls360-Tour-Name/
   HOW TO USE THESE IMAGES.txt   # Usage instructions for online platforms
   tour-data.json                # Full tour metadata
   tour-raw.json                 # Raw API response
@@ -192,7 +192,7 @@ A detailed instructions file (`HOW TO USE THESE IMAGES.txt`) is included in ever
 
 | Option | Description |
 |--------|-------------|
-| **1. Set target URL** | Enter a Ricoh360 tour URL to analyze |
+| **1. Set target URL** | Enter a tour URL to analyze |
 | **2. View tour info** | Show address, photographer, room count, features |
 | **3. View all rooms** | Table of all rooms with original/enhanced status |
 | **4. Download images** | Submenu: all, all + JSON metadata, enhanced-only, originals-only, selective, or JSON-only |
@@ -218,7 +218,7 @@ Enter room numbers: all            # Everything
 
 | Flag | Description |
 |------|-------------|
-| `--output`, `-o` | Set custom output directory (default: `~/Downloads/ricoh360-<tour-name>`) |
+| `--output`, `-o` | Set custom output directory (default: `~/Downloads/mls360-<tour-name>`) |
 | `--enhanced-only` | Only download AI-enhanced images |
 | `--originals-only` | Only download original images |
 | `--json-only` | Save tour metadata JSON without downloading images |
@@ -229,23 +229,24 @@ Enter room numbers: all            # Everything
 
 ```
 360-MLS-Downloader/
-  ricoh360-menu.py              # Interactive menu interface
-  ricoh360-downloader.py        # CLI interface
-  ricoh360_downloader_core.py   # Shared core engine (all logic)
-  ricoh360_viewer.py            # 360° HTML viewer generator
+  mls360-menu.py              # Interactive menu interface
+  mls360-downloader.py        # CLI interface
+  mls360_downloader_core.py   # Shared core engine (all logic)
+  mls360_viewer.py            # 360° HTML viewer generator
   vendor/
-    pannellum.min.js            # Pannellum 2.5.6 (MIT) — 360° viewer
+    pannellum.min.js          # Pannellum 2.5.6 (MIT) — 360° viewer
     pannellum.min.css
   logo.svg
   README.md
   LICENSE
+  CONTRIBUTING.md
 ```
 
 ---
 
 ## How It Works
 
-Ricoh360 MLS tours are built with Next.js and store 360 panoramic images in AWS S3. The tool:
+MLS virtual tours are built with Next.js and store 360 panoramic images in AWS S3. The tool:
 
 1. Extracts the tour UUID from the URL
 2. Fetches the Next.js build ID from the main page

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Ricoh360 MLS Tour Downloader — Interactive Menu
+360 MLS Tour Downloader — Interactive Menu
 =================================================
-Menu-driven interface for analyzing and downloading Ricoh360 virtual tours.
+Menu-driven interface for analyzing and downloading MLS virtual tours.
 
 Usage:
-    python ricoh360-menu.py                  # Launch interactive menu
-    python ricoh360-menu.py <url>            # Pre-load a tour URL and launch menu
+    python mls360-menu.py                  # Launch interactive menu
+    python mls360-menu.py <url>            # Pre-load a tour URL and launch menu
 """
 
 import json
@@ -17,7 +17,7 @@ from pathlib import Path
 
 # Import the core downloader module
 try:
-    from ricoh360_downloader_core import (
+    from mls360_downloader_core import (
         extract_tour_id,
         get_build_id,
         fetch_tour_data,
@@ -27,12 +27,12 @@ try:
         s3_url,
         sanitize_filename,
     )
-    from ricoh360_viewer import scan_download_folders, build_viewer_html
+    from mls360_viewer import scan_download_folders, build_viewer_html
 except ImportError:
     # Fallback: functions are in this file's sibling
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     try:
-        from ricoh360_downloader_core import (
+        from mls360_downloader_core import (
             extract_tour_id,
             get_build_id,
             fetch_tour_data,
@@ -42,9 +42,9 @@ except ImportError:
             s3_url,
             sanitize_filename,
         )
-        from ricoh360_viewer import scan_download_folders, build_viewer_html
+        from mls360_viewer import scan_download_folders, build_viewer_html
     except ImportError:
-        print("Error: Cannot find ricoh360_downloader_core.py")
+        print("Error: Cannot find mls360_downloader_core.py")
         print("Make sure it's in the same directory as this script.")
         sys.exit(1)
 
@@ -142,7 +142,7 @@ class AppState:
 def action_set_url(state):
     """Prompt for tour URL and analyze it."""
     print()
-    url = prompt("Enter Ricoh360 tour URL or UUID")
+    url = prompt("Enter MLS tour URL or UUID")
     if not url:
         print(clr("  No URL entered.", C.YELLOW))
         return
@@ -176,7 +176,7 @@ def action_set_url(state):
 
     dir_name = sanitize_filename(state.tour['name']) or state.tour_id
     downloads = os.path.join(Path.home(), "Downloads")
-    state.output_dir = os.path.join(downloads, f"ricoh360-{dir_name}")
+    state.output_dir = os.path.join(downloads, f"mls360-{dir_name}")
 
     print()
     print(clr("  Tour loaded successfully!", C.GREEN))
@@ -620,7 +620,7 @@ def main():
             state.tour = parse_tour(state.raw_data)
             dir_name = sanitize_filename(state.tour['name']) or state.tour_id
             downloads = os.path.join(Path.home(), "Downloads")
-            state.output_dir = os.path.join(downloads, f"ricoh360-{dir_name}")
+            state.output_dir = os.path.join(downloads, f"mls360-{dir_name}")
             print(clr("  Tour loaded!", C.GREEN))
         except Exception as e:
             print(clr(f"  Failed to load: {e}", C.RED))

@@ -82,10 +82,10 @@ Good contributions include:
 
 | File | Purpose |
 |------|---------|
-| `ricoh360_downloader_core.py` | Shared engine — all download logic lives here |
-| `ricoh360-downloader.py` | CLI interface (imports from core) |
-| `ricoh360-menu.py` | Interactive menu interface (imports from core) |
-| `ricoh360_viewer.py` | 360° HTML viewer generator |
+| `mls360_downloader_core.py` | Shared engine — all download logic lives here |
+| `mls360-downloader.py` | CLI interface (imports from core) |
+| `mls360-menu.py` | Interactive menu interface (imports from core) |
+| `mls360_viewer.py` | 360° HTML viewer generator |
 | `vendor/` | Vendored Pannellum library (don't modify) |
 
 ---

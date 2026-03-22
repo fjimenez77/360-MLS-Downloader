@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Ricoh360 360° HTML Viewer Generator
+360° MLS HTML Viewer Generator
 =====================================
 Generates a self-contained HTML page for viewing downloaded 360° panoramas
 locally in a browser — no internet required.
@@ -18,7 +18,7 @@ VENDOR_DIR = Path(__file__).parent / "vendor"
 
 
 def scan_download_folders(base_dir=None):
-    """Scan for ricoh360-* folders in ~/Downloads (or custom base)."""
+    """Scan for mls360-* folders in ~/Downloads (or custom base)."""
     if base_dir is None:
         base_dir = Path.home() / "Downloads"
     else:
@@ -29,11 +29,11 @@ def scan_download_folders(base_dir=None):
 
     folders = []
     for entry in sorted(base_dir.iterdir()):
-        if entry.is_dir() and entry.name.startswith("ricoh360-"):
+        if entry.is_dir() and entry.name.startswith("mls360-"):
             rooms_dir = entry / "rooms"
             if rooms_dir.exists() and rooms_dir.is_dir():
                 room_count = sum(1 for d in rooms_dir.iterdir() if d.is_dir())
-                display_name = entry.name.replace("ricoh360-", "").replace("-", " ")
+                display_name = entry.name.replace("mls360-", "").replace("-", " ")
                 folders.append({
                     "path": str(entry),
                     "name": display_name,
@@ -69,7 +69,7 @@ def build_viewer_html(tour_folder):
         raise FileNotFoundError(f"No rooms/ directory in {tour_folder}")
 
     # Load tour metadata if available
-    tour_name = tour_folder.name.replace("ricoh360-", "").replace("-", " ")
+    tour_name = tour_folder.name.replace("mls360-", "").replace("-", " ")
     address = ""
     photographer = ""
 
