@@ -16,6 +16,9 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Test files
+test-serve/
+
 # IDE
 .vscode/
 .idea/

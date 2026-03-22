@@ -27,6 +27,7 @@ try:
         s3_url,
         sanitize_filename,
     )
+    from ricoh360_viewer import scan_download_folders, build_viewer_html
 except ImportError:
     # Fallback: functions are in this file's sibling
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -41,6 +42,7 @@ except ImportError:
             s3_url,
             sanitize_filename,
         )
+        from ricoh360_viewer import scan_download_folders, build_viewer_html
     except ImportError:
         print("Error: Cannot find ricoh360_downloader_core.py")
         print("Make sure it's in the same directory as this script.")
@@ -464,6 +466,63 @@ def action_estimate_size(state):
     print(f"  {clr('Total estimated download:', C.BOLD)} {total_size/1024/1024:.1f} MB")
 
 
+# ── Viewer Generator ────────────────────────────────────────────────────────
+
+def action_generate_viewer(state):
+    """Scan for downloaded tours and generate an HTML 360° viewer."""
+    import webbrowser
+
+    print(f"\n  {clr('Build 360° HTML Viewer', C.BOLD)}")
+    print_divider()
+    print("  Scanning for downloaded tours...")
+
+    folders = scan_download_folders()
+
+    if not folders:
+        print(clr("\n  No downloaded tours found in ~/Downloads.", C.YELLOW))
+        print(clr("  Download a tour first (option 4), then come back here.", C.DIM))
+        return
+
+    # Present folder choices
+    options = []
+    for i, folder in enumerate(folders):
+        label = f"{folder['name']} ({folder['room_count']} rooms)"
+        options.append((str(i + 1), label))
+    options.append(("b", "Back to main menu"))
+
+    choice = menu_choice(options, title="Select a Tour")
+
+    if choice == 'b':
+        return
+
+    try:
+        idx = int(choice) - 1
+        if idx < 0 or idx >= len(folders):
+            print(clr(f"\n  Invalid choice: {choice}", C.RED))
+            return
+    except ValueError:
+        print(clr(f"\n  Invalid choice: {choice}", C.RED))
+        return
+
+    selected = folders[idx]
+    print(f"\n  Generating viewer for: {clr(selected['name'], C.CYAN)}")
+    print(f"  Source: {selected['path']}")
+
+    try:
+        output_path = build_viewer_html(selected['path'])
+        print(clr(f"\n  Viewer created!", C.GREEN))
+        print(f"  File: {output_path}")
+        print()
+
+        open_it = prompt("Open in browser? (y/n)", "y")
+        if open_it.lower() == 'y':
+            webbrowser.open(f"file://{output_path}")
+            print(clr("  Opened in browser!", C.GREEN))
+
+    except Exception as e:
+        print(clr(f"\n  Error generating viewer: {e}", C.RED))
+
+
 # ── Main Menu ───────────────────────────────────────────────────────────────
 
 def main_menu(state):
@@ -485,6 +544,7 @@ def main_menu(state):
             ("4", "Download images"),
             ("5", "View direct image URLs"),
             ("6", "Estimate download size"),
+            ("7", "Build 360° HTML viewer"),
             ("q", "Quit"),
         ]
 
@@ -505,6 +565,8 @@ def main_menu(state):
             action_view_urls(state)
         elif choice == '6':
             action_estimate_size(state)
+        elif choice == '7':
+            action_generate_viewer(state)
         elif choice == 'q':
             print(clr("\n  Bye!", C.CYAN))
             sys.exit(0)
