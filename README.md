@@ -119,7 +119,7 @@ python3 ricoh360-downloader.py "https://mls.ricoh360.com/TOUR-ID"
 Downloaded files are organized like this:
 
 ```
-ricoh360-Tour-Name/
+~/Downloads/ricoh360-Tour-Name/
   tour-data.json              # Full tour metadata
   brand-logo.jpg              # Photographer's brand logo
   tripod-cover.jpg            # Tripod cover overlay
@@ -150,7 +150,7 @@ ricoh360-Tour-Name/
 | **1. Set target URL** | Enter a Ricoh360 tour URL to analyze |
 | **2. View tour info** | Show address, photographer, room count, features |
 | **3. View all rooms** | Table of all rooms with original/enhanced status |
-| **4. Download images** | Submenu: all, enhanced-only, originals-only, selective, or JSON-only |
+| **4. Download images** | Submenu: all, all + JSON metadata, enhanced-only, originals-only, selective, or JSON-only |
 | **5. View direct URLs** | Show/save all direct S3 image URLs |
 | **6. Estimate size** | Check total download size before downloading |
 | **q. Quit** | Exit the application |
@@ -172,7 +172,7 @@ Enter room numbers: all            # Everything
 
 | Flag | Description |
 |------|-------------|
-| `--output`, `-o` | Set custom output directory |
+| `--output`, `-o` | Set custom output directory (default: `~/Downloads/ricoh360-<tour-name>`) |
 | `--enhanced-only` | Only download AI-enhanced images |
 | `--originals-only` | Only download original images |
 | `--json-only` | Save tour metadata JSON without downloading images |
