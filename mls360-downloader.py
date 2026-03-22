@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
-360 MLS Tour Downloader
-=============================
-Downloads all 360° panoramic images from any MLS tour MLS tour URL.
+360 MLS Tour Downloader — CLI
+================================
+Downloads 360° panoramic images from MLS virtual tour platforms.
+Auto-detects provider (Zillow, Ricoh360, etc.) from the URL.
 
 Usage:
-    python mls360-downloader.py <tour_url> [--output <dir>] [--enhanced-only] [--originals-only]
+    python mls360-downloader.py <url> [--output <dir>] [--enhanced-only] [--originals-only]
 
 Examples:
-    python mls360-downloader.py https://mls.mls360.com/f948586f-1c5c-48dc-81fd-6ef9a09a12c0/c84e8d06-2b82-46a0-991a-8814573e048b
-    python mls360-downloader.py https://mls.mls360.com/f948586f-1c5c-48dc-81fd-6ef9a09a12c0 --output ~/Desktop/my-tour
-    python mls360-downloader.py f948586f-1c5c-48dc-81fd-6ef9a09a12c0 --enhanced-only
+    python mls360-downloader.py "https://www.zillow.com/homedetails/ADDRESS/ZPID_zpid/"
+    python mls360-downloader.py "https://mls.ricoh360.com/TOUR-ID"
+    python mls360-downloader.py TOUR-UUID --enhanced-only
 """
 
 import argparse
@@ -19,15 +20,13 @@ import os
 import sys
 from pathlib import Path
 
-# Import shared core
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mls360_downloader_core import (
-    extract_tour_id,
-    get_build_id,
-    fetch_tour_data,
-    parse_tour,
+    load_tour,
     download_tour,
     sanitize_filename,
+    make_session,
+    __version__,
 )
 
 try:
@@ -39,21 +38,26 @@ except ImportError:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Download MLS virtual tours — all 360° panoramic images.",
+        description="Download 360° panoramic images from MLS virtual tours.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Supported platforms:
+  - Zillow 3D Home (zillow.com/homedetails/...)
+  - Ricoh360 MLS (mls.ricoh360.com/TOUR-ID)
+
 Examples:
-  %(prog)s https://mls.mls360.com/TOUR-ID/ROOM-ID
-  %(prog)s https://mls.mls360.com/TOUR-ID --output ~/tours/my-house
+  %(prog)s "https://www.zillow.com/homedetails/ADDRESS/ZPID_zpid/"
+  %(prog)s "https://mls.ricoh360.com/TOUR-ID/ROOM-ID"
   %(prog)s TOUR-UUID --enhanced-only
-  %(prog)s TOUR-URL --originals-only
+  %(prog)s ZILLOW-URL --output ~/Desktop/my-listing
         """,
     )
-    parser.add_argument("url", help="MLS tour URL or tour UUID")
-    parser.add_argument("--output", "-o", help="Output directory (default: ./<tour-name>)")
-    parser.add_argument("--enhanced-only", action="store_true", help="Only download enhanced images")
-    parser.add_argument("--originals-only", action="store_true", help="Only download original images")
+    parser.add_argument("url", help="Tour URL (Zillow listing or Ricoh360 tour)")
+    parser.add_argument("--output", "-o", help="Output directory (default: ~/Downloads/mls360-<name>)")
+    parser.add_argument("--enhanced-only", action="store_true", help="Only download enhanced/8K images")
+    parser.add_argument("--originals-only", action="store_true", help="Only download original/4K images")
     parser.add_argument("--json-only", action="store_true", help="Only save tour data JSON, no images")
+    parser.add_argument("--version", action="version", version=f"360 MLS Downloader v{__version__}")
 
     args = parser.parse_args()
 
@@ -61,42 +65,36 @@ Examples:
         print("Error: --enhanced-only and --originals-only are mutually exclusive.")
         sys.exit(1)
 
-    print("MLS tour Tour Downloader")
+    print(f"360 MLS Tour Downloader v{__version__}")
     print("=" * 50)
 
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-    })
+    session = make_session()
 
-    # Step 1: Extract tour ID
-    tour_id = extract_tour_id(args.url)
-    print(f"  Tour ID: {tour_id}")
+    try:
+        tour, raw_data, provider = load_tour(args.url, session)
+    except ValueError as e:
+        print(f"\n  Error: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n  Error fetching tour: {e}")
+        sys.exit(1)
 
-    # Step 2: Get Next.js build ID
-    print("  Fetching build ID...")
-    build_id = get_build_id(session)
-    print(f"  Build ID: {build_id}")
-
-    # Step 3: Fetch tour data
-    print("  Fetching tour data...")
-    raw_data = fetch_tour_data(session, build_id, tour_id)
-
-    # Step 4: Parse
-    tour = parse_tour(raw_data)
     print(f"  Tour: {tour['name']}")
     print(f"  Address: {tour['address']}")
-    print(f"  Photographer: {tour['photographer']}")
     print(f"  Rooms: {len(tour['rooms'])}")
 
-    enhanced_count = sum(1 for r in tour['rooms'] if r['enhanced'])
-    print(f"  Enhanced: {enhanced_count}/{len(tour['rooms'])}")
+    enhanced_count = sum(1 for r in tour['rooms'] if r.get('enhanced'))
+    if enhanced_count:
+        print(f"  Enhanced: {enhanced_count}/{len(tour['rooms'])}")
 
-    # Step 5: Set output directory
+    if tour.get("listing_photos"):
+        print(f"  Listing photos: {len(tour['listing_photos'])}")
+
+    # Set output directory
     if args.output:
         output_dir = args.output
     else:
-        dir_name = sanitize_filename(tour['name']) or tour_id
+        dir_name = sanitize_filename(tour['name']) or tour['id'][:12]
         downloads = os.path.join(Path.home(), "Downloads")
         output_dir = os.path.join(downloads, f"mls360-{dir_name}")
 
@@ -110,13 +108,14 @@ Examples:
         print(f"\n  Saved JSON to: {output.resolve()}")
         return
 
-    # Step 6: Download
+    # Download
     print(f"\n  Downloading to: {output_dir}")
     print("=" * 50)
 
     download_tour(
         tour,
         output_dir,
+        session=session,
         enhanced_only=args.enhanced_only,
         originals_only=args.originals_only,
     )

@@ -16,37 +16,23 @@ import time
 from pathlib import Path
 
 # Import the core downloader module
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     from mls360_downloader_core import (
-        extract_tour_id,
-        get_build_id,
-        fetch_tour_data,
-        parse_tour,
+        load_tour,
         download_tour,
         download_file,
-        s3_url,
         sanitize_filename,
+        make_session,
+        get_image_url,
+        get_preview_url,
+        __version__,
     )
     from mls360_viewer import scan_download_folders, build_viewer_html
 except ImportError:
-    # Fallback: functions are in this file's sibling
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    try:
-        from mls360_downloader_core import (
-            extract_tour_id,
-            get_build_id,
-            fetch_tour_data,
-            parse_tour,
-            download_tour,
-            download_file,
-            s3_url,
-            sanitize_filename,
-        )
-        from mls360_viewer import scan_download_folders, build_viewer_html
-    except ImportError:
-        print("Error: Cannot find mls360_downloader_core.py")
-        print("Make sure it's in the same directory as this script.")
-        sys.exit(1)
+    print("Error: Cannot find mls360_downloader_core.py")
+    print("Make sure it's in the same directory as this script.")
+    sys.exit(1)
 
 try:
     import requests
@@ -120,20 +106,16 @@ def menu_choice(options, title=None):
 
 class AppState:
     def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-        })
-        self.build_id = None
-        self.tour_id = None
+        self.session = make_session()
         self.tour = None
         self.raw_data = None
+        self.provider = None
         self.output_dir = None
 
     def reset_tour(self):
-        self.tour_id = None
         self.tour = None
         self.raw_data = None
+        self.provider = None
         self.output_dir = None
 
 
@@ -142,7 +124,7 @@ class AppState:
 def action_set_url(state):
     """Prompt for tour URL and analyze it."""
     print()
-    url = prompt("Enter MLS tour URL or UUID")
+    url = prompt("Enter tour URL (Zillow or Ricoh360)")
     if not url:
         print(clr("  No URL entered.", C.YELLOW))
         return
@@ -150,31 +132,18 @@ def action_set_url(state):
     state.reset_tour()
 
     try:
-        state.tour_id = extract_tour_id(url)
-        print(f"  Tour ID: {clr(state.tour_id, C.CYAN)}")
-    except SystemExit:
-        print(clr("  Could not extract tour ID from that URL.", C.RED))
+        tour, raw_data, provider = load_tour(url, state.session)
+        state.tour = tour
+        state.raw_data = raw_data
+        state.provider = provider
+    except ValueError as e:
+        print(clr(f"\n  {e}", C.RED))
         return
-
-    # Get build ID if we don't have one
-    if not state.build_id:
-        print("  Fetching build ID...")
-        try:
-            state.build_id = get_build_id(state.session)
-        except Exception as e:
-            print(clr(f"  Failed to get build ID: {e}", C.RED))
-            return
-
-    # Fetch tour data
-    print("  Fetching tour data...")
-    try:
-        state.raw_data = fetch_tour_data(state.session, state.build_id, state.tour_id)
-        state.tour = parse_tour(state.raw_data)
     except Exception as e:
-        print(clr(f"  Failed to fetch tour: {e}", C.RED))
+        print(clr(f"\n  Failed to fetch tour: {e}", C.RED))
         return
 
-    dir_name = sanitize_filename(state.tour['name']) or state.tour_id
+    dir_name = sanitize_filename(state.tour['name']) or state.tour['id'][:12]
     downloads = os.path.join(Path.home(), "Downloads")
     state.output_dir = os.path.join(downloads, f"mls360-{dir_name}")
 
@@ -189,13 +158,22 @@ def _print_tour_summary(tour):
     print_divider()
     print(f"  {clr('Tour:', C.BOLD)}          {tour['name']}")
     print(f"  {clr('Address:', C.BOLD)}       {tour['address']}")
-    print(f"  {clr('Photographer:', C.BOLD)}  {tour['photographer']}")
+    print(f"  {clr('Provider:', C.BOLD)}      {tour.get('provider', 'unknown')}")
     print(f"  {clr('Rooms:', C.BOLD)}         {len(tour['rooms'])}")
-    enhanced = sum(1 for r in tour['rooms'] if r['enhanced'])
-    print(f"  {clr('Enhanced:', C.BOLD)}      {enhanced}/{len(tour['rooms'])}")
-    print(f"  {clr('Walkthrough:', C.BOLD)}   {'Yes' if tour['walkthrough_enabled'] else 'No'}")
-    if tour.get('brand_logo', {}) and tour['brand_logo'].get('url'):
-        print(f"  {clr('Brand URL:', C.BOLD)}    {tour['brand_logo']['url']}")
+    enhanced = sum(1 for r in tour['rooms'] if r.get('enhanced'))
+    if enhanced:
+        print(f"  {clr('Enhanced:', C.BOLD)}      {enhanced}/{len(tour['rooms'])}")
+    if tour.get('listing_photos'):
+        print(f"  {clr('Photos:', C.BOLD)}        {len(tour['listing_photos'])} listing photos")
+    if tour.get('listing_details'):
+        details = tour['listing_details']
+        if details.get('price') and details['price'] != 'N/A':
+            print(f"  {clr('Price:', C.BOLD)}         {details['price']}")
+        if details.get('bedrooms') and details['bedrooms'] != 'N/A':
+            beds = details['bedrooms']
+            baths = details.get('bathrooms', '?')
+            sqft = details.get('sqft', '?')
+            print(f"  {clr('Size:', C.BOLD)}          {beds} bed / {baths} bath / {sqft}")
     print_divider()
 
 
@@ -330,27 +308,18 @@ def action_download_selective(state):
 
         print(f"\n  [{idx}/{len(state.tour['rooms'])}] {room['name']}")
 
-        if room['original']:
-            url = s3_url(room['original'])
+        if room.get('original'):
+            url = get_image_url(room['original'])
             if url:
                 download_file(session, url, room_dir / "original.jpg")
-            if room['original'].get('preview_key'):
-                preview_info = dict(room['original'])
-                preview_info['key'] = preview_info['preview_key']
-                url = s3_url(preview_info)
-                if url:
-                    download_file(session, url, room_dir / "preview.jpg")
+            preview = get_preview_url(room)
+            if preview:
+                download_file(session, preview, room_dir / "preview.jpg")
 
-        if room['enhanced']:
-            url = s3_url(room['enhanced'])
+        if room.get('enhanced'):
+            url = get_image_url(room['enhanced'])
             if url:
                 download_file(session, url, room_dir / "enhanced.jpg")
-            if room['enhanced'].get('preview_key'):
-                preview_info = dict(room['enhanced'])
-                preview_info['key'] = preview_info['preview_key']
-                url = s3_url(preview_info)
-                if url:
-                    download_file(session, url, room_dir / "enhanced-preview.jpg")
 
     print(clr(f"\n  Done! Saved to: {output.resolve()}", C.GREEN))
 
@@ -362,6 +331,7 @@ def _run_download(state, enhanced_only=False, originals_only=False):
     download_tour(
         state.tour,
         state.output_dir,
+        session=state.session,
         enhanced_only=enhanced_only,
         originals_only=originals_only,
     )
@@ -398,13 +368,13 @@ def action_view_urls(state):
         rname = room['name']
         print(f"\n  {clr(f'{idx:02d}. {rname}', C.BOLD)}")
         if room['original']:
-            print(f"    Original:  {s3_url(room['original'])}")
+            print(f"    Original:  {get_image_url(room['original'])}")
         if room['enhanced']:
-            print(f"    Enhanced:  {s3_url(room['enhanced'])}")
+            print(f"    Enhanced:  {get_image_url(room['enhanced'])}")
 
     if state.tour.get('brand_logo') and state.tour['brand_logo'].get('s3'):
         print(f"\n  {clr('Brand Logo', C.BOLD)}")
-        print(f"    {s3_url(state.tour['brand_logo']['s3'])}")
+        print(f"    {get_image_url(state.tour['brand_logo'].get('s3') or state.tour['brand_logo'])}")
 
     print()
     save = prompt("Save URLs to file? (y/n)", "n")
@@ -418,9 +388,9 @@ def action_view_urls(state):
             for room in state.tour['rooms']:
                 f.write(f"# {room['index']:02d}. {room['name']}\n")
                 if room['original']:
-                    f.write(f"{s3_url(room['original'])}\n")
+                    f.write(f"{get_image_url(room['original'])}\n")
                 if room['enhanced']:
-                    f.write(f"{s3_url(room['enhanced'])}\n")
+                    f.write(f"{get_image_url(room['enhanced'])}\n")
                 f.write("\n")
         print(clr(f"  Saved to: {url_file}", C.GREEN))
 
@@ -440,7 +410,7 @@ def action_estimate_size(state):
         label = f"  {room['index']:>2}. {room['name']:<20}"
 
         if room['original']:
-            url = s3_url(room['original'])
+            url = get_image_url(room['original'])
             try:
                 resp = state.session.head(url, timeout=10)
                 size = int(resp.headers.get('Content-Length', 0))
@@ -450,7 +420,7 @@ def action_estimate_size(state):
                 sizes.append(0)
 
         if room['enhanced']:
-            url = s3_url(room['enhanced'])
+            url = get_image_url(room['enhanced'])
             try:
                 resp = state.session.head(url, timeout=10)
                 size = int(resp.headers.get('Content-Length', 0))
@@ -614,11 +584,11 @@ def main():
         banner()
         print(f"  Pre-loading tour: {url}")
         try:
-            state.tour_id = extract_tour_id(url)
-            state.build_id = get_build_id(state.session)
-            state.raw_data = fetch_tour_data(state.session, state.build_id, state.tour_id)
-            state.tour = parse_tour(state.raw_data)
-            dir_name = sanitize_filename(state.tour['name']) or state.tour_id
+            tour, raw_data, provider = load_tour(url, state.session)
+            state.tour = tour
+            state.raw_data = raw_data
+            state.provider = provider
+            dir_name = sanitize_filename(state.tour['name']) or state.tour['id'][:12]
             downloads = os.path.join(Path.home(), "Downloads")
             state.output_dir = os.path.join(downloads, f"mls360-{dir_name}")
             print(clr("  Tour loaded!", C.GREEN))

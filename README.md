@@ -6,29 +6,38 @@
 
 <p align="center">Download 360-degree panoramic images from MLS virtual home tours.<br>Supports both an interactive menu-driven interface and a scriptable CLI for automation.</p>
 
-<p align="center"><strong>v1.0.0</strong></p>
+<p align="center"><strong>v2.0.0</strong> — Now supports Zillow 3D Home + Ricoh360 MLS</p>
 
 Built by **PRHack | CyberSpartan77** ([@fjimenez77](https://github.com/fjimenez77))
 
 ---
 
+## Supported Platforms
+
+| Platform | What You Get |
+|----------|-------------|
+| **Zillow 3D Home** | 360° panoramas (4K + 8K), listing photos, property details, description |
+| **Ricoh360 MLS** | 360° panoramas (original + AI-enhanced), tour metadata |
+
 ## Features
 
-- Download all 360 equirectangular panoramas from any MLS virtual tour
+- Auto-detects platform from URL — just paste and go
+- Download all 360° equirectangular panoramas from MLS virtual tours
+- **Zillow:** Also downloads listing photos, property description, price, beds/baths/sqft
 - Interactive menu mode with tour analysis, room selection, and size estimation
 - CLI mode with flags for scripting and automation
-- Downloads both original and AI-enhanced versions
+- Downloads both original and AI-enhanced/8K versions
 - Selective room downloads (pick specific rooms or ranges)
 - Generate a self-contained 360° HTML tour viewer for offline use
-- Exports direct S3 image URLs for use in other tools
 - Resume support — skips already-downloaded files
 - Saves full tour metadata as JSON
-- Includes usage instructions for uploading to Zillow, Realtor.com, and other platforms
+- Includes usage instructions for uploading to real estate platforms
 
 ## Requirements
 
 - Python 3.8+
 - `requests` library
+- `playwright` (required for Zillow — auto-installs on first use)
 
 ## Installation
 
@@ -231,8 +240,12 @@ Enter room numbers: all            # Everything
 360-MLS-Downloader/
   mls360-menu.py              # Interactive menu interface
   mls360-downloader.py        # CLI interface
-  mls360_downloader_core.py   # Shared core engine (all logic)
+  mls360_downloader_core.py   # Shared core engine (provider-agnostic)
   mls360_viewer.py            # 360° HTML viewer generator
+  providers/
+    __init__.py               # Provider registry and auto-detection
+    zillow.py                 # Zillow 3D Home provider
+    ricoh360.py               # Ricoh360 MLS provider
   vendor/
     pannellum.min.js          # Pannellum 2.5.6 (MIT) — 360° viewer
     pannellum.min.css
