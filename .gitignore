@@ -1,0 +1,32 @@
+# Downloads
+mls360-*/
+
+# Allow Logo assets
+!Logo/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+test-serve/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# DevForge / Claude
+CLAUDE.md
+.claude/
+.playwright-mcp/
+firebase-debug.log
