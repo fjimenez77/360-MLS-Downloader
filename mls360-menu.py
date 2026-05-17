@@ -102,6 +102,174 @@ def menu_choice(options, title=None):
     return input(f"  {clr('>', C.GREEN)} Choose: ").strip().lower()
 
 
+# ── Dependency Check ────────────────────────────────────────────────────────
+
+def check_dependencies():
+    """Probe each runtime dependency. Returns dict keyed by dep name with
+    {ok, value, critical, why, install}. Used by both the startup banner and
+    the menu's 'd) Check dependencies' action.
+
+    Replaces the broken auto-install in providers/zillow.py that called bare
+    'pip' (not present on macOS Homebrew Python). The install commands here
+    use sys.executable so they always reflect the user's actual Python.
+    """
+    import importlib.util
+    import platform as _platform
+
+    status = {}
+
+    # Python version (info only — required for runtime, can't actually fix)
+    py = sys.version_info
+    status['python'] = {
+        'ok': py >= (3, 9),
+        'value': f"{py.major}.{py.minor}.{py.micro} ({_platform.system()})",
+        'critical': True,
+        'why': 'runtime',
+        'install': 'Install Python 3.9+ from python.org or your package manager',
+    }
+
+    # requests — required for ALL downloads (both providers + image fetches)
+    try:
+        import requests as _req
+        status['requests'] = {
+            'ok': True,
+            'value': getattr(_req, '__version__', 'installed'),
+            'critical': True,
+            'why': 'all downloads',
+        }
+    except ImportError:
+        status['requests'] = {
+            'ok': False, 'value': None, 'critical': True,
+            'why': 'all downloads',
+            'install': f'{sys.executable} -m pip install requests',
+        }
+
+    # playwright Python package — optional, Zillow only
+    pw_spec = importlib.util.find_spec('playwright')
+    if pw_spec is not None:
+        try:
+            import playwright as _pw
+            status['playwright'] = {
+                'ok': True,
+                'value': getattr(_pw, '__version__', 'installed'),
+                'critical': False,
+                'why': 'Zillow tours',
+            }
+        except ImportError:
+            status['playwright'] = {
+                'ok': False, 'value': None, 'critical': False,
+                'why': 'Zillow tours',
+                'install': f'{sys.executable} -m pip install playwright',
+            }
+    else:
+        status['playwright'] = {
+            'ok': False, 'value': None, 'critical': False,
+            'why': 'Zillow tours',
+            'install': f'{sys.executable} -m pip install playwright',
+        }
+
+    # Chromium browser — only meaningful if Playwright is installed
+    chromium_ok = False
+    chromium_path = None
+    cache_candidates = [
+        Path.home() / 'Library' / 'Caches' / 'ms-playwright',  # macOS
+        Path.home() / '.cache' / 'ms-playwright',              # Linux
+        Path(os.environ.get('LOCALAPPDATA', '')) / 'ms-playwright',  # Windows
+    ]
+    for cache_dir in cache_candidates:
+        if cache_dir.exists():
+            for d in cache_dir.glob('chromium-*'):
+                if d.is_dir():
+                    chromium_ok = True
+                    chromium_path = str(d)
+                    break
+            if chromium_ok:
+                break
+    status['chromium'] = {
+        'ok': chromium_ok,
+        'value': chromium_path or '—',
+        'critical': False,
+        'why': 'Zillow tours (browser engine)',
+        'install': f'{sys.executable} -m playwright install chromium',
+    }
+
+    # Core module — already verified by import-time guard at top of file;
+    # included here so the diagnostic table is complete.
+    status['mls360_core'] = {
+        'ok': True,
+        'value': __version__,
+        'critical': True,
+        'why': 'core logic',
+    }
+
+    return status
+
+
+def _summarize_dependency_status(status):
+    """Return (level, message) where level is 'ok'|'warn'|'error'.
+    Used by both the startup banner and the persistent main-menu header."""
+    critical_missing = [n for n, s in status.items() if s.get('critical') and not s['ok']]
+    if critical_missing:
+        return ('error', f"Cannot run — missing: {', '.join(critical_missing)}. Press 'd' for install instructions.")
+
+    optional_missing = [n for n, s in status.items() if not s.get('critical') and not s['ok']]
+    if optional_missing:
+        zillow_blocked = any(n in ('playwright', 'chromium') for n in optional_missing)
+        if zillow_blocked:
+            return ('warn', "Ricoh360 ready · Zillow disabled (press 'd' for fix)")
+        return ('warn', f"Optional missing: {', '.join(optional_missing)} (press 'd' for details)")
+
+    return ('ok', "Ready — Zillow and Ricoh360 both available")
+
+
+def action_check_dependencies(state):
+    """Menu action 'd' — show full diagnostic table + install commands.
+    Refreshes state.dep_status so the startup banner reflects any
+    just-installed packages on the next menu redraw."""
+    state.dep_status = check_dependencies()
+    status = state.dep_status
+
+    print()
+    print(f"  {clr('Dependency Check', C.BOLD)}")
+    print_divider()
+    print(f"  {'Dependency':<16} {'Status':<10} {'Value':<40} {'Needed for':<22}")
+    print(f"  {'─'*16} {'─'*10} {'─'*40} {'─'*22}")
+
+    for name, s in status.items():
+        # Pad the plain text FIRST, then wrap with color codes — otherwise
+        # Python's :<10 formatter counts ANSI escape bytes as visible chars
+        # and the column gets visually short.
+        if s['ok']:
+            mark = clr(f"{'OK':<10}", C.GREEN)
+        elif s.get('critical'):
+            mark = clr(f"{'MISSING':<10}", C.RED)
+        else:
+            mark = clr(f"{'MISSING':<10}", C.YELLOW)
+        # For chromium, show just the version dir basename rather than full path
+        raw_value = str(s.get('value') or '—')
+        if name == 'chromium' and s['ok'] and '/' in raw_value:
+            raw_value = raw_value.rsplit('/', 1)[-1]
+        value = raw_value[:40]
+        why = (s.get('why') or '')[:22]
+        print(f"  {name:<16} {mark} {value:<40} {why:<22}")
+
+    print_divider()
+
+    missing = [(n, s) for n, s in status.items() if not s['ok']]
+    if missing:
+        print()
+        print(f"  {clr('To install missing dependencies:', C.BOLD)}")
+        for name, s in missing:
+            install_cmd = s.get('install', '(no install command available)')
+            print(f"\n  {clr(name, C.CYAN)}  (needed for: {s.get('why', 'unknown')})")
+            print(f"    {clr(install_cmd, C.DIM)}")
+        print()
+        print(clr("  After installing, return here and press 'd' again to re-check.", C.DIM))
+    else:
+        print()
+        print(clr("  All dependencies satisfied. You can use any tour provider.", C.GREEN))
+
+
 # ── Session State ───────────────────────────────────────────────────────────
 
 class AppState:
@@ -111,6 +279,7 @@ class AppState:
         self.raw_data = None
         self.provider = None
         self.output_dir = None
+        self.dep_status = None  # populated on first menu draw + after 'd'
 
     def reset_tour(self):
         self.tour = None
@@ -530,9 +699,22 @@ def _print_viewer_instructions(tour_path):
 
 def main_menu(state):
     """Main interactive menu loop."""
+    # Cache the dep status for the session — recomputed only when the user
+    # explicitly picks 'd' (after they've installed something). Saves probing
+    # the filesystem on every menu redraw.
+    if state.dep_status is None:
+        state.dep_status = check_dependencies()
+
     while True:
         clear_screen()
         banner()
+
+        # Persistent dependency status banner (above the loaded-tour line)
+        level, msg = _summarize_dependency_status(state.dep_status)
+        status_color = {'ok': C.GREEN, 'warn': C.YELLOW, 'error': C.RED}[level]
+        status_icon = {'ok': '[OK]', 'warn': '[!]', 'error': '[X]'}[level]
+        print(f"  {clr(status_icon + ' ' + msg, status_color)}")
+        print()
 
         if state.tour:
             print(f"  {clr('Loaded:', C.GREEN)} {state.tour['name']} — {state.tour['address']}")
@@ -548,6 +730,7 @@ def main_menu(state):
             ("5", "View direct image URLs"),
             ("6", "Estimate download size"),
             ("7", "Build 360° HTML viewer"),
+            ("d", "Check dependencies (Playwright / Chromium / etc.)"),
             ("q", "Quit"),
         ]
 
@@ -570,6 +753,8 @@ def main_menu(state):
             action_estimate_size(state)
         elif choice == '7':
             action_generate_viewer(state)
+        elif choice == 'd':
+            action_check_dependencies(state)
         elif choice == 'q':
             print(clr("\n  Bye!", C.CYAN))
             sys.exit(0)

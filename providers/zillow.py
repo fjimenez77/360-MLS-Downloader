@@ -764,19 +764,25 @@ def _fetch_page_interactive(url):
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        print("\n  Playwright is required for Zillow support.")
-        print("  Install with: pip install playwright && python3 -m playwright install chromium")
-        import subprocess
-        print("  Attempting auto-install...")
-        subprocess.run(["pip", "install", "playwright"], capture_output=True)
-        subprocess.run(["python3", "-m", "playwright", "install", "chromium"], capture_output=True)
-        try:
-            from playwright.sync_api import sync_playwright
-        except ImportError:
-            raise ValueError(
-                "Playwright is required for Zillow support.\n"
-                "Install: pip install playwright && python3 -m playwright install chromium"
-            )
+        # The previous version of this code attempted a silent auto-install via
+        # subprocess.run(["pip", "install", "playwright"]). That had two problems:
+        #   1. Broken on macOS Homebrew Python where 'pip' (bare) doesn't exist —
+        #      only 'pip3' and 'python3 -m pip' work. Auto-install crashed with
+        #      FileNotFoundError before doing anything.
+        #   2. Silent dependency install is a security anti-pattern (a misconfigured
+        #      pip index or MITM'd pypi would install attacker-controlled code).
+        # Replaced with a clean error + actionable instructions tailored to the
+        # user's actual Python via sys.executable. The menu now has a 'd) Check
+        # dependencies' option for upfront validation.
+        import sys as _sys
+        raise ValueError(
+            "Playwright is required for Zillow support but is not installed.\n"
+            "  Install with:\n"
+            f"    {_sys.executable} -m pip install playwright\n"
+            f"    {_sys.executable} -m playwright install chromium\n"
+            "  Then re-run the menu. (Use the menu's 'd) Check dependencies'\n"
+            "  option to verify the install before trying again.)"
+        )
 
     print("  Opening browser to load Zillow listing...")
     print("  If a verification/CAPTCHA appears, please solve it in the browser window.")
