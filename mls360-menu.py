@@ -142,6 +142,7 @@ def check_dependencies():
             'ok': False, 'value': None, 'critical': True,
             'why': 'all downloads',
             'install': f'{sys.executable} -m pip install requests',
+            'install_cmd': [sys.executable, '-m', 'pip', 'install', 'requests'],
         }
 
     # playwright Python package — optional, Zillow only
@@ -160,12 +161,14 @@ def check_dependencies():
                 'ok': False, 'value': None, 'critical': False,
                 'why': 'Zillow tours',
                 'install': f'{sys.executable} -m pip install playwright',
+                'install_cmd': [sys.executable, '-m', 'pip', 'install', 'playwright'],
             }
     else:
         status['playwright'] = {
             'ok': False, 'value': None, 'critical': False,
             'why': 'Zillow tours',
             'install': f'{sys.executable} -m pip install playwright',
+            'install_cmd': [sys.executable, '-m', 'pip', 'install', 'playwright'],
         }
 
     # Chromium browser — only meaningful if Playwright is installed
@@ -191,6 +194,10 @@ def check_dependencies():
         'critical': False,
         'why': 'Zillow tours (browser engine)',
         'install': f'{sys.executable} -m playwright install chromium',
+        # Only attempt chromium install if playwright is (or will be) installed —
+        # _run_installs() runs items in order, so playwright lands first.
+        'install_cmd': [sys.executable, '-m', 'playwright', 'install', 'chromium'],
+        'install_note': 'downloads ~130MB; may take 30s-2min',
     }
 
     # Core module — already verified by import-time guard at top of file;
@@ -261,13 +268,93 @@ def action_check_dependencies(state):
         print(f"  {clr('To install missing dependencies:', C.BOLD)}")
         for name, s in missing:
             install_cmd = s.get('install', '(no install command available)')
-            print(f"\n  {clr(name, C.CYAN)}  (needed for: {s.get('why', 'unknown')})")
+            note = s.get('install_note', '')
+            note_str = clr(f"  ({note})", C.DIM) if note else ''
+            print(f"\n  {clr(name, C.CYAN)}  (needed for: {s.get('why', 'unknown')}){note_str}")
             print(f"    {clr(install_cmd, C.DIM)}")
         print()
-        print(clr("  After installing, return here and press 'd' again to re-check.", C.DIM))
+
+        # Offer to run the installable items. Only items that have an
+        # install_cmd (list form) are eligible — e.g. python itself has no
+        # auto-install path; the user has to handle that one manually.
+        installable = [(n, s) for n, s in missing if 'install_cmd' in s]
+        if installable:
+            print()
+            ans = prompt(f"Install {len(installable)} package(s) now? [y/N]")
+            if ans and ans.lower() in ('y', 'yes'):
+                _run_installs(installable)
+                # Refresh after install attempt so the main-menu banner is accurate
+                state.dep_status = check_dependencies()
+                print()
+                print(clr("  Status after install:", C.BOLD))
+                level, msg = _summarize_dependency_status(state.dep_status)
+                color = {'ok': C.GREEN, 'warn': C.YELLOW, 'error': C.RED}[level]
+                icon = {'ok': '[OK]', 'warn': '[!]', 'error': '[X]'}[level]
+                print(f"  {clr(icon + ' ' + msg, color)}")
+            else:
+                print(clr("  Skipped — run the commands above manually when ready, then press 'd' again.", C.DIM))
+        else:
+            print(clr("  After installing, return here and press 'd' again to re-check.", C.DIM))
     else:
         print()
         print(clr("  All dependencies satisfied. You can use any tour provider.", C.GREEN))
+
+
+def _run_installs(items):
+    """Run install commands sequentially with live output streaming.
+
+    items: list of (name, status_dict) where status_dict has 'install_cmd' (list).
+
+    Security model: this runs ONLY commands that check_dependencies() built using
+    sys.executable — no user-supplied strings ever land in subprocess. Confirmation
+    is collected in action_check_dependencies() before this is called, so the
+    user has explicitly approved the install. Output is NOT captured so the user
+    sees pip's real-time progress; on failure we stop the sequence so a busted
+    playwright install doesn't trigger a doomed chromium download.
+    """
+    import subprocess
+
+    print()
+    print_divider()
+    print(f"  {clr('Running installs', C.BOLD)} — {len(items)} package(s)")
+    print_divider()
+
+    for name, s in items:
+        cmd = s.get('install_cmd')
+        if not cmd:
+            continue
+        note = s.get('install_note', '')
+        note_str = f"  ({note})" if note else ''
+        print()
+        print(f"  {clr('►', C.CYAN)} Installing {clr(name, C.BOLD)}{clr(note_str, C.DIM)}")
+        print(f"  {clr('  $ ' + ' '.join(cmd), C.DIM)}")
+        print()
+        try:
+            # No capture_output — let the user see pip / playwright progress
+            # streaming live to their terminal. check=False so we can render a
+            # tidy failure message instead of raising a traceback.
+            result = subprocess.run(cmd, check=False)
+            print()
+            if result.returncode == 0:
+                print(f"  {clr('[OK]', C.GREEN)} {name} installed successfully.")
+            else:
+                print(f"  {clr('[FAIL]', C.RED)} {name} install exited with code {result.returncode}.")
+                print(f"  {clr('Stopping here — fix the error above, then run \"d\" again.', C.YELLOW)}")
+                return
+        except FileNotFoundError as e:
+            print()
+            print(f"  {clr('[ERROR]', C.RED)} Could not launch the install command: {e}")
+            print(f"  {clr('This usually means the Python binary moved. Try running the menu via its full path.', C.YELLOW)}")
+            return
+        except Exception as e:
+            print()
+            print(f"  {clr('[ERROR]', C.RED)} Install crashed: {e}")
+            return
+
+    print()
+    print_divider()
+    print(f"  {clr('All installs complete.', C.GREEN)}")
+    print_divider()
 
 
 # ── Session State ───────────────────────────────────────────────────────────
