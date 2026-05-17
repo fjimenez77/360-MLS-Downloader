@@ -52,6 +52,22 @@ def _pick_image(room_dir, candidates):
     return None
 
 
+def _sanitize_for_shell(name, fallback="Tour"):
+    """Strip shell/batch metacharacters before interpolating into launcher scripts.
+
+    The tour_name comes from server-supplied JSON (tour-data.json["name"]).
+    Untrusted JSON could contain ;  &  |  `  $  "  '  <  >  \\  newlines, etc.,
+    which would break out of an echo "..." in bash or a title/echo in .bat.
+
+    Allowlist approach: keep alphanumerics, spaces, hyphens, parens, periods,
+    commas, underscores. Strip everything else. Real tour names (addresses,
+    listing titles) never contain shell metacharacters, so display is unchanged
+    for legitimate inputs.
+    """
+    cleaned = re.sub(r'[^\w\s\-().,]', '', name or '').strip()
+    return cleaned if cleaned else fallback
+
+
 def _parse_room_folder(folder_name):
     """Extract index and name from folder like '01-Foyer'."""
     match = re.match(r'^(\d+)-(.+)$', folder_name)
@@ -85,6 +101,14 @@ def build_viewer_html(tour_folder):
     rooms = []
     for entry in sorted(rooms_dir.iterdir()):
         if not entry.is_dir():
+            continue
+
+        # Defensive: skip folder names with path-traversal sequences or separators.
+        # In normal operation this can't happen (room folders are created from
+        # sanitized server data), but if a user manually planted a folder named
+        # '..something' the relative URL would resolve outside rooms_dir when
+        # the viewer is served by python -m http.server.
+        if '..' in entry.name or '/' in entry.name or '\\' in entry.name or '\x00' in entry.name:
             continue
 
         idx, name = _parse_room_folder(entry.name)
@@ -144,6 +168,10 @@ def build_viewer_html(tour_folder):
         f.write(html)
 
     # Generate launcher script for macOS
+    # tour_name is sanitized before shell interpolation — it originates from
+    # server-supplied JSON and could otherwise contain ; & | etc. that would
+    # turn the .command file into a remote-code-execution vector when chmod'd.
+    safe_tour_name = _sanitize_for_shell(tour_name)
     launcher_path = tour_folder / "Open Tour Viewer.command"
     launcher_script = f'''#!/bin/bash
 # 360° Tour Viewer Launcher
@@ -160,7 +188,7 @@ done
 
 echo ""
 echo "  Starting 360° Tour Viewer..."
-echo "  Tour: {tour_name}"
+echo "  Tour: {safe_tour_name}"
 echo "  URL:  http://localhost:$PORT/tour-viewer.html"
 echo ""
 echo "  Close this window to stop the server."
@@ -177,12 +205,14 @@ python3 -m http.server $PORT
     os.chmod(launcher_path, 0o755)
 
     # Generate launcher script for Windows
+    # Same sanitization rationale as the .command file above — & | > < in tour_name
+    # would chain commands in a .bat. safe_tour_name was computed above.
     bat_path = tour_folder / "Open Tour Viewer.bat"
     bat_script = f'''@echo off
-title 360 Tour Viewer - {tour_name}
+title 360 Tour Viewer - {safe_tour_name}
 echo.
 echo   Starting 360 Tour Viewer...
-echo   Tour: {tour_name}
+echo   Tour: {safe_tour_name}
 echo.
 echo   Close this window to stop the server.
 echo.
@@ -792,27 +822,47 @@ if (window.location.protocol === 'file:') {{
     var ROOMS = {rooms_json};
     var currentIndex = 0;
 
-    // Build room buttons
+    // Build room buttons via DOM methods (not innerHTML) so that room.name,
+    // room.index, and room.preview — all sourced from server-supplied JSON —
+    // cannot inject markup or attribute breakouts. textContent on text nodes
+    // and direct .src assignment on img elements escape automatically.
     var roomList = document.getElementById('room-list');
     ROOMS.forEach(function(room, i) {{
         var btn = document.createElement('button');
         btn.className = 'room-btn' + (i === 0 ? ' active' : '');
         btn.setAttribute('data-index', i);
 
-        var thumb = '';
+        // Thumb: <img class="room-thumb" src="…" alt="" loading="lazy">  OR  <div class="room-thumb"></div>
+        var thumb;
         if (room.preview) {{
-            thumb = '<img class="room-thumb" src="' + room.preview + '" alt="" loading="lazy">';
+            thumb = document.createElement('img');
+            thumb.className = 'room-thumb';
+            thumb.src = room.preview;
+            thumb.alt = '';
+            thumb.loading = 'lazy';
         }} else {{
-            thumb = '<div class="room-thumb"></div>';
+            thumb = document.createElement('div');
+            thumb.className = 'room-thumb';
+        }}
+        btn.appendChild(thumb);
+
+        // Info: <div class="room-info"><span class="room-name">N. Name</span>[<span class="room-badge">AI Enhanced</span>]</div>
+        var info = document.createElement('div');
+        info.className = 'room-info';
+
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'room-name';
+        nameSpan.textContent = room.index + '. ' + room.name;
+        info.appendChild(nameSpan);
+
+        if (room.has_enhanced) {{
+            var badge = document.createElement('span');
+            badge.className = 'room-badge';
+            badge.textContent = 'AI Enhanced';
+            info.appendChild(badge);
         }}
 
-        var badge = room.has_enhanced ? '<span class="room-badge">AI Enhanced</span>' : '';
-
-        btn.innerHTML = thumb +
-            '<div class="room-info">' +
-                '<span class="room-name">' + room.index + '. ' + room.name + '</span>' +
-                badge +
-            '</div>';
+        btn.appendChild(info);
 
         btn.addEventListener('click', function() {{
             goToRoom(i);

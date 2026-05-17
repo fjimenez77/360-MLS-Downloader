@@ -29,8 +29,13 @@ from providers import detect_provider
 # ── Shared Utilities ────────────────────────────────────────────────────────
 
 def sanitize_filename(name):
-    """Make a string safe for use as a filename."""
-    return re.sub(r'[^\w\s\-]', '', name).strip().replace(' ', '-')
+    """Make a string safe for use as a filename.
+
+    Truncates to 80 chars to keep paths well under filesystem limits
+    (NAME_MAX is typically 255 bytes; staying under 80 leaves headroom
+    for the parent path and extensions).
+    """
+    return re.sub(r'[^\w\s\-]', '', name).strip().replace(' ', '-')[:80]
 
 
 def make_session():
