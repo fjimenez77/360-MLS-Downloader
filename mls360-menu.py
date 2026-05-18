@@ -104,25 +104,62 @@ def menu_choice(options, title=None):
 
 # ── Dependency Check ────────────────────────────────────────────────────────
 
+def _detect_pep668():
+    """Detect PEP 668 'externally-managed' Python.
+
+    Returns True if a marker file exists in the stdlib path (Homebrew Python
+    on macOS, system Python on modern Debian/Ubuntu, etc.). When True, pip
+    install commands need --user --break-system-packages to avoid being
+    blocked. The --user flag scopes the install to the user's home dir
+    (~/Library/Python/3.14/ on macOS) so the system Python install is
+    not touched — same isolation model as 'pip install --user'.
+    """
+    try:
+        import sysconfig
+        stdlib = Path(sysconfig.get_paths().get('stdlib', ''))
+        for p in [stdlib, stdlib.parent, stdlib.parent.parent]:
+            if p and (p / 'EXTERNALLY-MANAGED').exists():
+                return True
+    except Exception:
+        pass
+    return False
+
+
 def check_dependencies():
     """Probe each runtime dependency. Returns dict keyed by dep name with
-    {ok, value, critical, why, install}. Used by both the startup banner and
-    the menu's 'd) Check dependencies' action.
+    {ok, value, critical, why, install, install_cmd}. Used by both the
+    startup banner and the menu's 'd) Check dependencies' action.
 
-    Replaces the broken auto-install in providers/zillow.py that called bare
-    'pip' (not present on macOS Homebrew Python). The install commands here
-    use sys.executable so they always reflect the user's actual Python.
+    Install commands use sys.executable so they always reflect the user's
+    actual Python. When PEP 668 is detected (Homebrew Python, modern Debian,
+    etc.), pip commands automatically include --user --break-system-packages
+    so the install lands in the user's home Python dir instead of being
+    rejected by the externally-managed-environment guard.
     """
     import importlib.util
     import platform as _platform
 
     status = {}
+    pep668 = _detect_pep668()
+
+    # When PEP 668 is active, build pip install commands that will actually
+    # succeed: --user scopes install to ~/Library/Python/3.x/, and
+    # --break-system-packages overrides the Homebrew/Debian block on touching
+    # the system site-packages. Both flags together = "install for me only,
+    # bypassing the externally-managed lock."
+    pip_extra = ['--user', '--break-system-packages'] if pep668 else []
+
+    # Format the install command as a display string AND a subprocess arg list
+    def _pip_install(pkg):
+        cmd = [sys.executable, '-m', 'pip', 'install', *pip_extra, pkg]
+        return ' '.join(cmd), cmd
 
     # Python version (info only — required for runtime, can't actually fix)
     py = sys.version_info
+    pep668_note = ' [PEP 668: pip → user site]' if pep668 else ''
     status['python'] = {
         'ok': py >= (3, 9),
-        'value': f"{py.major}.{py.minor}.{py.micro} ({_platform.system()})",
+        'value': f"{py.major}.{py.minor}.{py.micro} ({_platform.system()}){pep668_note}",
         'critical': True,
         'why': 'runtime',
         'install': 'Install Python 3.9+ from python.org or your package manager',
@@ -138,37 +175,36 @@ def check_dependencies():
             'why': 'all downloads',
         }
     except ImportError:
+        ins, cmd = _pip_install('requests')
         status['requests'] = {
             'ok': False, 'value': None, 'critical': True,
             'why': 'all downloads',
-            'install': f'{sys.executable} -m pip install requests',
-            'install_cmd': [sys.executable, '-m', 'pip', 'install', 'requests'],
+            'install': ins, 'install_cmd': cmd,
         }
 
     # playwright Python package — optional, Zillow only
     pw_spec = importlib.util.find_spec('playwright')
+    pw_ok = False
+    pw_version = None
     if pw_spec is not None:
         try:
             import playwright as _pw
-            status['playwright'] = {
-                'ok': True,
-                'value': getattr(_pw, '__version__', 'installed'),
-                'critical': False,
-                'why': 'Zillow tours',
-            }
+            pw_ok = True
+            pw_version = getattr(_pw, '__version__', 'installed')
         except ImportError:
-            status['playwright'] = {
-                'ok': False, 'value': None, 'critical': False,
-                'why': 'Zillow tours',
-                'install': f'{sys.executable} -m pip install playwright',
-                'install_cmd': [sys.executable, '-m', 'pip', 'install', 'playwright'],
-            }
+            pass
+
+    if pw_ok:
+        status['playwright'] = {
+            'ok': True, 'value': pw_version,
+            'critical': False, 'why': 'Zillow tours',
+        }
     else:
+        ins, cmd = _pip_install('playwright')
         status['playwright'] = {
             'ok': False, 'value': None, 'critical': False,
             'why': 'Zillow tours',
-            'install': f'{sys.executable} -m pip install playwright',
-            'install_cmd': [sys.executable, '-m', 'pip', 'install', 'playwright'],
+            'install': ins, 'install_cmd': cmd,
         }
 
     # Chromium browser — only meaningful if Playwright is installed
