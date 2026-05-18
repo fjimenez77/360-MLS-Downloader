@@ -30,3 +30,7 @@ CLAUDE.md
 .claude/
 .playwright-mcp/
 firebase-debug.log
+devforge/.onboard-resume.json
+devforge.backup-*
+CLAUDE.md.backup-*
+CLAUDE.md.user-*
