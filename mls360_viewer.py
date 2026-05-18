@@ -673,6 +673,23 @@ body {{
     color: #22d3ee;
 }}
 
+#file-warning .url-note a {{
+    color: #22d3ee;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(34, 211, 238, 0.4);
+    transition: color 0.15s, border-color 0.15s;
+}}
+
+#file-warning .url-note a:hover {{
+    color: #67e8f9;
+    border-bottom-color: #67e8f9;
+}}
+
+#file-warning .platform-box code:active {{
+    background: #1e293b;
+    transform: scale(0.99);
+}}
+
 #file-warning .fw-footer {{
     margin-top: 32px;
     padding-top: 20px;
@@ -745,7 +762,7 @@ body {{
             <div class="method">
                 <div class="method-label">Option 2 — Terminal</div>
                 <div class="method-action">Copy and paste into Terminal:</div>
-                <code id="mac-cmd" onclick="navigator.clipboard.writeText(this.textContent).then(function(){{document.getElementById('mac-copy').textContent='Copied!'}})">python3 -m http.server 8360</code>
+                <code id="mac-cmd" onclick="copyToClipboard(this.textContent, 'mac-copy')" title="Click to copy">python3 -m http.server 8360</code>
                 <p class="hint" id="mac-copy">Click to copy</p>
             </div>
         </div>
@@ -761,19 +778,71 @@ body {{
             <div class="method">
                 <div class="method-label">Option 2 — Command Prompt</div>
                 <div class="method-action">Copy and paste into CMD or PowerShell:</div>
-                <code id="win-cmd" onclick="navigator.clipboard.writeText(this.textContent).then(function(){{document.getElementById('win-copy').textContent='Copied!'}})">python -m http.server 8360</code>
+                <code id="win-cmd" onclick="copyToClipboard(this.textContent, 'win-copy')" title="Click to copy">python -m http.server 8360</code>
                 <p class="hint" id="win-copy">Click to copy</p>
             </div>
         </div>
     </div>
 
-    <p class="url-note">Then open: <strong>http://localhost:8360/tour-viewer.html</strong></p>
+    <p class="url-note">Then open: <a href="http://localhost:8360/tour-viewer.html"><strong>http://localhost:8360/tour-viewer.html</strong></a></p>
 
     <div class="fw-footer">
         <div class="fw-credit">PRHack | CyberSpartan77</div>
         <a href="https://github.com/fjimenez77/360-MLS-Downloader" target="_blank">github.com/fjimenez77/360-MLS-Downloader</a>
     </div>
 </div>
+
+<script>
+// Clipboard helper for the splash page. Tries the modern async API first
+// (works on https://, http://localhost, and on file:// in Chrome/Firefox/Edge),
+// then falls back to document.execCommand('copy') for Safari on file:// where
+// navigator.clipboard.writeText() rejects silently.
+//
+// Why this needs a fallback: the previous version used navigator.clipboard
+// directly with no .catch() — on Safari's file:// the Promise rejected and
+// nothing happened, so clicking the code box did nothing visible to the user.
+function copyToClipboard(text, feedbackId) {{
+    var feedback = document.getElementById(feedbackId);
+    function done(ok) {{
+        if (!feedback) return;
+        feedback.textContent = ok ? '✓ Copied!' : '✗ Copy failed — select and Cmd-C / Ctrl-C';
+        feedback.style.color = ok ? '#4ade80' : '#f87171';
+        feedback.style.fontWeight = ok ? '600' : 'normal';
+        setTimeout(function() {{
+            feedback.textContent = 'Click to copy';
+            feedback.style.color = '';
+            feedback.style.fontWeight = '';
+        }}, ok ? 1800 : 3500);
+    }}
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {{
+        navigator.clipboard.writeText(text).then(
+            function() {{ done(true); }},
+            function() {{ fallbackCopy(text, done); }}
+        );
+    }} else {{
+        fallbackCopy(text, done);
+    }}
+}}
+
+function fallbackCopy(text, done) {{
+    // Legacy path — works on file:// in Safari. Creates an off-screen
+    // textarea, selects its content, runs the deprecated execCommand('copy').
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '0';
+    ta.setAttribute('readonly', '');
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    var ok = false;
+    try {{ ok = document.execCommand('copy'); }} catch (e) {{ ok = false; }}
+    document.body.removeChild(ta);
+    done(ok);
+}}
+</script>
 
 <div id="sidebar">
     <div id="sidebar-header">
